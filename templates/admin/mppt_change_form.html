@@ -1,0 +1,6 @@
+{% extends "admin/change_form.html" %}
+{% load i18n admin_modify mptt_admin %}
+
+{% block after_field_sets %}
+    {% mptt_admin_form %}
+{% endblock %}
