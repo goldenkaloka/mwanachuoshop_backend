@@ -101,16 +101,63 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
             'category', 'is_featured', 'product_lines'
         ]
     
+    def validate(self, data):
+        # Add comprehensive validation
+        errors = {}
+        
+        # Check required fields
+        required_fields = ['name', 'description', 'type', 'brand', 'category']
+        for field in required_fields:
+            if field not in data:
+                errors[field] = "This field is required."
+        
+        # Validate product lines if provided
+        if 'product_lines' in data:
+            for idx, line in enumerate(data['product_lines']):
+                line_errors = {}
+                
+                if 'price' not in line:
+                    line_errors['price'] = "Price is required for each product line."
+                elif not isinstance(line['price'], (int, float)) or line['price'] <= 0:
+                    line_errors['price'] = "Price must be a positive number."
+                
+                if 'sku' not in line or not line['sku']:
+                    line_errors['sku'] = "SKU is required for each product line."
+                
+                if line_errors:
+                    errors[f'product_lines.{idx}'] = line_errors
+        
+        if errors:
+            raise serializers.ValidationError(errors)
+        
+        return data
+    
     def create(self, validated_data):
-        product_lines_data = validated_data.pop('product_lines', [])
-        request = self.context.get('request')
-        
-        product = Product.objects.create(
-            owner=request.user,
-            **validated_data
-        )
-        
-        for line_data in product_lines_data:
+        try:
+            request = self.context.get('request')
+            if not request or not request.user:
+                raise serializers.ValidationError("Authentication required")
+            
+            product_lines_data = validated_data.pop('product_lines', [])
+            
+            # Create the product
+            product = Product.objects.create(
+                owner=request.user,
+                **validated_data
+            )
+            
+            # Create product lines
+            for line_data in product_lines_data:
+                self._create_product_line(product, line_data)
+            
+            return product
+            
+        except Exception as e:
+            print(f"Error in product creation: {str(e)}")
+            raise
+    
+    def _create_product_line(self, product, line_data):
+        try:
             images_data = line_data.pop('images', [])
             attribute_values_data = line_data.pop('attribute_values', [])
             
@@ -119,48 +166,25 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
                 **line_data
             )
             
+            # Create images
             for image_data in images_data:
                 ProductImage.objects.create(
                     product_line=product_line,
                     **image_data
                 )
             
+            # Add attribute values
             for attr_value in attribute_values_data:
-                product_line.attribute_values.add(attr_value['id'])
-        
-        return product
-    
-    def update(self, instance, validated_data):
-        product_lines_data = validated_data.pop('product_lines', None)
-        
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        
-        if product_lines_data is not None:
-            # Delete existing lines (or implement more sophisticated update logic)
-            instance.product_lines.all().delete()
-            
-            for line_data in product_lines_data:
-                images_data = line_data.pop('images', [])
-                attribute_values_data = line_data.pop('attribute_values', [])
-                
-                product_line = ProductLine.objects.create(
-                    product=instance,
-                    **line_data
-                )
-                
-                for image_data in images_data:
-                    ProductImage.objects.create(
-                        product_line=product_line,
-                        **image_data
-                    )
-                
-                for attr_value in attribute_values_data:
+                if isinstance(attr_value, dict):
                     product_line.attribute_values.add(attr_value['id'])
-        
-        instance.save()
-        return instance
-    
+                else:
+                    product_line.attribute_values.add(attr_value)
+            
+            return product_line
+            
+        except Exception as e:
+            print(f"Error creating product line: {str(e)}")
+            raise    
 
 
 

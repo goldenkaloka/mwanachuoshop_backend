@@ -1,6 +1,6 @@
 # views.py
 
-from rest_framework import generics, status
+from rest_framework import generics, status, serializers
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
@@ -20,13 +20,28 @@ from .serializers import (
 from shops.models import SubscriptionPlan
 from users.models import ProductPayment, SubscriptionPayment
 from marketplace.utils.payment import PaymentProcessor
+from rest_framework import generics, status
+from rest_framework.response import Response
+from django.db.models import Prefetch
+import logging
+import traceback
 
-# views.py
+logger = logging.getLogger(__name__)
 
 class ProductListCreateView(generics.ListCreateAPIView):
+    """
+    Enhanced Product List/Create View with:
+    - Comprehensive error handling
+    - Detailed request logging
+    - Robust validation
+    - Clear error responses
+    """
     serializer_class = ProductListSerializer
     
     def get_queryset(self):
+        """
+        Get filtered and optimized queryset for product listing
+        """
         queryset = Product.objects.filter(is_active=True).select_related(
             'brand', 'category', 'shop'
         ).prefetch_related(
@@ -45,14 +60,13 @@ class ProductListCreateView(generics.ListCreateAPIView):
             )
         ).order_by('-created_at')
         
-        # Get filter parameters from request
+        # Apply filters from query parameters
         search_query = self.request.query_params.get('search')
         category_ids = self.request.query_params.getlist('category')
         brand_ids = self.request.query_params.getlist('brand')
         min_price = self.request.query_params.get('min_price')
         max_price = self.request.query_params.get('max_price')
         
-        # Apply filters
         queryset = Product.objects.search_and_filter(
             search_query=search_query,
             category_ids=category_ids,
@@ -63,6 +77,93 @@ class ProductListCreateView(generics.ListCreateAPIView):
         
         return queryset
     
+    def create(self, request, *args, **kwargs):
+        """
+        Enhanced create method with:
+        - Detailed request logging
+        - Comprehensive error handling
+        - Clear error responses
+        """
+        try:
+            logger.info(
+                "Product creation request received",
+                extra={
+                    'user': request.user.username if request.user else 'anonymous',
+                    'data': request.data
+                }
+            )
+            
+            # Ensure we have the request in context for the serializer
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            
+            logger.debug(
+                "Product data validated successfully",
+                extra={'validated_data': serializer.validated_data}
+            )
+            
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            
+            logger.info(
+                "Product created successfully",
+                extra={
+                    'product_id': serializer.data.get('id'),
+                    'user': request.user.username
+                }
+            )
+            
+            return Response(
+                serializer.data,
+                status=status.HTTP_201_CREATED,
+                headers=headers
+            )
+            
+        except serializers.ValidationError as ve:
+            logger.warning(
+                "Product creation validation failed",
+                extra={
+                    'errors': ve.detail,
+                    'user': request.user.username if request.user else 'anonymous'
+                }
+            )
+            return Response(
+                {
+                    'status': 'validation_error',
+                    'errors': ve.detail,
+                    'message': 'Please check the provided data'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        except Exception as e:
+            logger.error(
+                "Product creation failed",
+                extra={
+                    'error': str(e),
+                    'error_type': type(e).__name__,
+                    'user': request.user.username if request.user else 'anonymous',
+                    'traceback': traceback.format_exc()
+                }
+            )
+            return Response(
+                {
+                    'status': 'error',
+                    'message': 'An unexpected error occurred',
+                    'error': str(e),
+                    'error_type': type(e).__name__
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    def perform_create(self, serializer):
+        """
+        Custom perform_create to ensure owner is set
+        """
+        if self.request and self.request.user:
+            serializer.save(owner=self.request.user)
+        else:
+            raise serializers.ValidationError("Authentication required")
 
 class ProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Product.objects.all()
@@ -282,3 +383,34 @@ class FilterOptionsView(APIView):
             'brands': BrandFilterSerializer(brands, many=True).data,
             'price_range': price_range  # Directly return the dict, not serialized
         })
+    
+
+class CategoryListView(generics.ListAPIView):
+    serializer_class = CategoryFilterSerializer
+    
+    def get_queryset(self):
+        return Category.objects.filter(
+            is_active=True
+        ).annotate(
+            product_count=Count(
+                'products',
+                filter=Q(products__is_active=True)
+            )
+        ).filter(
+            product_count__gt=0
+        ).order_by('name')
+
+class BrandListView(generics.ListAPIView):
+    serializer_class = BrandFilterSerializer
+    
+    def get_queryset(self):
+        return Brand.objects.filter(
+            is_active=True
+        ).annotate(
+            product_count=Count(
+                'products',
+                filter=Q(products__is_active=True)
+            )
+        ).filter(
+            product_count__gt=0
+        ).order_by('name')
