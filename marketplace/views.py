@@ -1,8 +1,9 @@
 # views.py
 
-from rest_framework import generics, status, serializers
+from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 from django.db import models
@@ -29,141 +30,17 @@ import traceback
 logger = logging.getLogger(__name__)
 
 class ProductListCreateView(generics.ListCreateAPIView):
-    """
-    Enhanced Product List/Create View with:
-    - Comprehensive error handling
-    - Detailed request logging
-    - Robust validation
-    - Clear error responses
-    """
-    serializer_class = ProductListSerializer
+    serializer_class = ProductListSerializer  # For GET
+    parser_classes = [MultiPartParser, JSONParser]
     
-    def get_queryset(self):
-        """
-        Get filtered and optimized queryset for product listing
-        """
-        queryset = Product.objects.filter(is_active=True).select_related(
-            'brand', 'category', 'shop'
-        ).prefetch_related(
-            Prefetch(
-                'product_lines',
-                queryset=ProductLine.objects.filter(is_active=True).prefetch_related(
-                    Prefetch(
-                        'images',
-                        queryset=ProductImage.objects.all().order_by('order')
-                    ),
-                    Prefetch(
-                        'attribute_values',
-                        queryset=AttributeValue.objects.select_related('attribute')
-                    )
-                )
-            )
-        ).order_by('-created_at')
-        
-        # Apply filters from query parameters
-        search_query = self.request.query_params.get('search')
-        category_ids = self.request.query_params.getlist('category')
-        brand_ids = self.request.query_params.getlist('brand')
-        min_price = self.request.query_params.get('min_price')
-        max_price = self.request.query_params.get('max_price')
-        
-        queryset = Product.objects.search_and_filter(
-            search_query=search_query,
-            category_ids=category_ids,
-            brand_ids=brand_ids,
-            min_price=min_price,
-            max_price=max_price
-        )
-        
-        return queryset
-    
-    def create(self, request, *args, **kwargs):
-        """
-        Enhanced create method with:
-        - Detailed request logging
-        - Comprehensive error handling
-        - Clear error responses
-        """
-        try:
-            logger.info(
-                "Product creation request received",
-                extra={
-                    'user': request.user.username if request.user else 'anonymous',
-                    'data': request.data
-                }
-            )
-            
-            # Ensure we have the request in context for the serializer
-            serializer = self.get_serializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
-            
-            logger.debug(
-                "Product data validated successfully",
-                extra={'validated_data': serializer.validated_data}
-            )
-            
-            self.perform_create(serializer)
-            headers = self.get_success_headers(serializer.data)
-            
-            logger.info(
-                "Product created successfully",
-                extra={
-                    'product_id': serializer.data.get('id'),
-                    'user': request.user.username
-                }
-            )
-            
-            return Response(
-                serializer.data,
-                status=status.HTTP_201_CREATED,
-                headers=headers
-            )
-            
-        except serializers.ValidationError as ve:
-            logger.warning(
-                "Product creation validation failed",
-                extra={
-                    'errors': ve.detail,
-                    'user': request.user.username if request.user else 'anonymous'
-                }
-            )
-            return Response(
-                {
-                    'status': 'validation_error',
-                    'errors': ve.detail,
-                    'message': 'Please check the provided data'
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-            
-        except Exception as e:
-            logger.error(
-                "Product creation failed",
-                extra={
-                    'error': str(e),
-                    'error_type': type(e).__name__,
-                    'user': request.user.username if request.user else 'anonymous',
-                    'traceback': traceback.format_exc()
-                }
-            )
-            return Response(
-                {
-                    'status': 'error',
-                    'message': 'An unexpected error occurred',
-                    'error': str(e),
-                    'error_type': type(e).__name__
-                },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return ProductCreateUpdateSerializer
+        return super().get_serializer_class()
     
     def perform_create(self, serializer):
-        """
-        Custom perform_create to ensure owner is set
-        """
-        if self.request and self.request.user:
-            serializer.save(owner=self.request.user)
-        else:
-            raise serializers.ValidationError("Authentication required")
+        serializer.save(owner=self.request.user)
+
 
 class ProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Product.objects.all()
