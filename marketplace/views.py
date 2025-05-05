@@ -1,293 +1,213 @@
-# views.py
-
-from rest_framework import generics, status
-from rest_framework.response import Response
-from rest_framework.views import APIView
-from rest_framework.parsers import JSONParser, MultiPartParser
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.decorators import api_view, permission_classes
-from django.db import models
-from django.db.models import Prefetch, Count, Q, Min, Max
 from django.shortcuts import get_object_or_404
-from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
-import json
-
-from .models import Brand, Category, Product, ProductLine, ProductImage, AttributeValue
-from .serializers import (
-    BrandFilterSerializer, CategoryFilterSerializer, PriceRangeSerializer, ProductListSerializer, ProductDetailSerializer,
-    ProductCreateUpdateSerializer
-)
-from shops.models import SubscriptionPlan
-from users.models import ProductPayment, SubscriptionPayment
-from marketplace.utils.payment import PaymentProcessor
-from rest_framework import generics, status
+from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
-from django.db.models import Prefetch
-import logging
-import traceback
+from rest_framework.decorators import action
+from django_filters.rest_framework import DjangoFilterBackend
+from django.db.models import Prefetch, Q
+from .models import Category, Brand, Attribute, AttributeValue, Product, ProductImage
+from .serializers import (
+    CategorySerializer, BrandSerializer, AttributeSerializer,
+    AttributeValueSerializer, ProductDetailSerializer, 
+    ProductListSerializer, ProductSerializer, ProductImageSerializer
+)
+from .permissions import IsAdminOrReadOnly, IsOwnerOrReadOnly, IsProductOwnerOrReadOnly
+from shops.models import Shop, UserOffer
 
-logger = logging.getLogger(__name__)
+class CategoryViewSet(viewsets.ModelViewSet):
+    queryset = Category.objects.filter(is_active=True)
+    serializer_class = CategorySerializer
+    permission_classes = [IsAdminOrReadOnly]
 
-class ProductListCreateView(generics.ListCreateAPIView):
-    serializer_class = ProductListSerializer  # For GET
-    parser_classes = [MultiPartParser, JSONParser]
-    
-    def get_serializer_class(self):
-        if self.request.method == 'POST':
-            return ProductCreateUpdateSerializer
-        return super().get_serializer_class()
-    
-    def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
-
-
-class ProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Product.objects.all()
-    lookup_field = 'pk'
-    
-    def get_serializer_class(self):
-        if self.request.method in ['PUT', 'PATCH']:
-            return ProductCreateUpdateSerializer
-        return ProductDetailSerializer
-    
-    def get_permissions(self):
-        if self.request.method in ['GET', 'HEAD', 'OPTIONS']:
-            return []
-        return [IsAuthenticated()]
-    
     def get_queryset(self):
-        return Product.objects.select_related(
-            'owner__profile', 'brand', 'category', 'shop'
-        ).prefetch_related(
-            Prefetch(
-                'product_lines',
-                queryset=ProductLine.objects.prefetch_related(
-                    'images',
-                    Prefetch(
-                        'attribute_values',
-                        queryset=AttributeValue.objects.select_related('attribute')
-                    )
-                )
-            )
-        )
-    
-    def perform_destroy(self, instance):
-        instance.is_active = False
-        instance.save()
+        return super().get_queryset().prefetch_related('children')
 
-class UserProductListView(generics.ListAPIView):
-    serializer_class = ProductListSerializer
-    permission_classes = [IsAuthenticated]
-    
+class BrandViewSet(viewsets.ModelViewSet):
+    queryset = Brand.objects.all()
+    serializer_class = BrandSerializer
+    permission_classes = [IsAdminOrReadOnly]
+    pagination_class = None  # Typically brands list is short
+
+class AttributeViewSet(viewsets.ModelViewSet):
+    queryset = Attribute.objects.all()
+    serializer_class = AttributeSerializer
+    permission_classes = [IsAdminOrReadOnly]
+    pagination_class = None
+
+class AttributeValueViewSet(viewsets.ModelViewSet):
+    serializer_class = AttributeValueSerializer
+    permission_classes = [IsAdminOrReadOnly]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['category_id', 'attribute_id']
+
     def get_queryset(self):
-        return Product.objects.filter(
+        """
+        Return a queryset of AttributeValue objects, optimized with select_related.
+        Optionally filter by category_id and include ancestors if requested.
+        """
+        queryset = AttributeValue.objects.select_related('attribute', 'category')
+
+        # Filter by category_id from query params
+        category_id = self.request.query_params.get('category_id')
+        include_ancestors = self.request.query_params.get('include_ancestors', 'false').lower() == 'true'
+
+        if category_id:
+            try:
+                category_id = int(category_id)
+                if include_ancestors:
+                    # Include attribute values from the category and its ancestors
+                    try:
+                        category = Category.objects.get(id=category_id)
+                        ancestor_ids = category.get_ancestors(include_self=True).values_list('id', flat=True)
+                        queryset = queryset.filter(category_id__in=ancestor_ids)
+                    except Category.DoesNotExist:
+                        queryset = queryset.none()  # Return empty queryset if category doesn't exist
+                else:
+                    # Filter by exact category_id
+                    queryset = queryset.filter(category_id=category_id)
+            except ValueError:
+                queryset = queryset.none()  # Invalid category_id format
+
+        return queryset
+    
+class ProductViewSet(viewsets.ModelViewSet):
+    serializer_class = ProductSerializer
+    permission_classes = [permissions.IsAuthenticated, IsOwnerOrReadOnly]
+
+    def get_queryset(self):
+        queryset = Product.objects.filter(
             owner=self.request.user
         ).select_related(
-            'brand', 'category', 'shop'
+            'brand', 'category', 'owner'
         ).prefetch_related(
-            Prefetch(
-                'product_lines',
-                queryset=ProductLine.objects.prefetch_related(
-                    'images'
-                )
+            'images',
+            Prefetch('attribute_values', queryset=AttributeValue.objects.select_related('attribute'))
+        )
+
+        if category_id := self.request.query_params.get('category'):
+            queryset = queryset.filter(category__id=category_id)
+        if brand_id := self.request.query_params.get('brand'):
+            queryset = queryset.filter(brand__id=brand_id)
+
+        return queryset
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        shop = Shop.objects.filter(user=user).first()
+        offer = UserOffer.objects.filter(user=user).first()
+
+        if offer and offer.free_products_remaining > 0:
+            offer.free_products_remaining -= 1
+            offer.save()
+
+        serializer.save(owner=user, shop=shop)
+
+    @action(detail=False, permission_classes=[permissions.AllowAny])
+    def recent(self, request):
+        """Get recently added products (last 10)"""
+        products = Product.objects.filter(
+            category__is_active=True
+        ).select_related(
+            'brand', 'category', 'owner'
+        ).prefetch_related(
+            Prefetch('images', queryset=ProductImage.objects.order_by('-is_primary'))
+        ).order_by('-created_at')[:50]
+
+        serializer = ProductListSerializer(products, many=True, context={'request': request})
+        return Response(serializer.data)
+
+    @action(detail=False, permission_classes=[permissions.AllowAny])
+    def public_list(self, request):
+        """Public product listing with optional attribute filtering"""
+        queryset = Product.objects.filter(
+            category__is_active=True,
+        ).select_related(
+            'brand', 'category', 'owner'
+        ).prefetch_related(
+            Prefetch('images', queryset=ProductImage.objects.order_by('-is_primary')),
+            Prefetch('attribute_values', queryset=AttributeValue.objects.select_related('attribute'))
+        )
+
+
+        if query := request.query_params.get('q'):
+            queryset = queryset.filter(
+                Q(name__icontains=query) | Q(description__icontains=query) | Q(brand__name__icontains=query) 
+                | Q(category__name__icontains=query) 
             )
+        # Apply filters
+        if category_id := request.query_params.get('category'):
+            queryset = queryset.filter(category__id=category_id)
+        if brand_id := request.query_params.get('brand'):
+            queryset = queryset.filter(brand__id=brand_id)
+        if attribute_value_ids := request.query_params.get('attribute_value_ids'):
+            try:
+                attr_ids = [int(id) for id in attribute_value_ids.split(',')]
+                for attr_id in attr_ids:
+                    queryset = queryset.filter(attribute_values__id=attr_id)
+            except (ValueError, TypeError):
+                queryset = queryset.none()  # Invalid attribute_value_ids format
+
+        serializer = ProductListSerializer(queryset, many=True, context={'request': request})
+        return Response(serializer.data)
+
+    @action(detail=False, url_path='category/(?P<category_id>[^/.]+)', 
+            permission_classes=[permissions.AllowAny])
+    def by_category(self, request, category_id=None):
+        """Products by category"""
+        category = get_object_or_404(Category, id=category_id, is_active=True)
+        products = Product.objects.filter(
+            category=category, 
+            is_active=True
+        ).select_related(
+            'brand', 'category', 'owner'
+        ).prefetch_related(
+            Prefetch('images', queryset=ProductImage.objects.order_by('-is_primary'))
         ).order_by('-created_at')
 
-@csrf_exempt
-def azam_payment_callback(request):
-    """Handle AzamPay payment callback for subscriptions"""
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            reference_id = data.get('referenceId')
-            status = data.get('status')
-            
-            payment = SubscriptionPayment.objects.get(transaction_id=reference_id)
-            
-            if status == 'SUCCESS':
-                payment.mark_as_completed()
-                if payment.subscription:
-                    payment.subscription.is_active = True
-                    payment.subscription.save()
-                    if not payment.shop.is_active:
-                        payment.shop.is_active = True
-                        payment.shop.save()
-            else:
-                payment.status = 'failed'
-                payment.save()
-            
-            return JsonResponse({'status': 'ok'})
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
-    return JsonResponse({'status': 'error'}, status=400)
-
-@csrf_exempt
-def azam_product_payment_callback(request):
-    """Handle AzamPay payment callback for product payments"""
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            reference_id = data.get('referenceId')
-            status = data.get('status')
-            
-            payment = ProductPayment.objects.get(transaction_id=reference_id)
-            
-            if status == 'SUCCESS':
-                payment.mark_as_completed()
-                if payment.product:
-                    payment.product.is_active = True
-                    payment.product.save()
-            else:
-                payment.status = 'failed'
-                payment.save()
-            
-            return JsonResponse({'status': 'ok'})
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
-    return JsonResponse({'status': 'error'}, status=400)
-
-class InitiateSubscriptionPaymentAPI(generics.CreateAPIView):
-    permission_classes = [IsAuthenticated]
-    
-    def post(self, request, *args, **kwargs):
-        shop = request.user.shops.first()
-        plan_slug = request.data.get('plan')
-        payment_method = request.data.get('payment_method', 'azampay')
-        
-        if not shop:
-            return Response(
-                {"error": "You don't have a shop"}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        try:
-            plan = SubscriptionPlan.objects.get(slug=plan_slug, active=True)
-        except SubscriptionPlan.DoesNotExist:
-            return Response(
-                {"error": "Invalid subscription plan"}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        payment, response = PaymentProcessor.process_subscription_payment(
-            shop=shop,
-            plan=plan,
-            payment_method=payment_method
-        )
-        
-        if not response:
-            return Response(
-                {"error": "Payment initiation failed"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
+        serializer = ProductListSerializer(products, many=True, context={'request': request})
         return Response({
-            "payment_id": payment.id,
-            "status": payment.status,
-            "azampay_response": response
-        })
-
-class InitiateProductPaymentAPI(generics.CreateAPIView):
-    permission_classes = [IsAuthenticated]
-    
-    def post(self, request, *args, **kwargs):
-        product_id = request.data.get('product_id')
-        payment_method = request.data.get('payment_method', 'azampay')
-        
-        try:
-            product = Product.objects.get(id=product_id, owner=request.user)
-        except Product.DoesNotExist:
-            return Response(
-                {"error": "Product not found"}, 
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
-        payment, response = PaymentProcessor.process_product_payment(
-            user=request.user,
-            product=product,
-            payment_method=payment_method
-        )
-        
-        if not response:
-            return Response(
-                {"error": "Payment initiation failed"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        return Response({
-            "payment_id": payment.id,
-            "status": payment.status,
-            "azampay_response": response
+            'category': CategorySerializer(category, context={'request': request}).data,
+            'products': serializer.data
         })
     
-
-# views.py
-
-# views.py
-class FilterOptionsView(APIView):
-    def get(self, request):
-        categories = Category.objects.annotate(
-            product_count=models.Count(
-                'products',
-                filter=models.Q(products__is_active=True)
+    @action(detail=True, methods=['get'], permission_classes=[permissions.AllowAny])
+    def public_detail(self, request, pk=None):
+        """Public product detail view"""
+        try:
+            pk = int(pk)
+        except (TypeError, ValueError):
+            return Response(
+                {"detail": "Invalid product ID format."},
+                status=status.HTTP_400_BAD_REQUEST
             )
-        ).filter(product_count__gt=0)
-        
-        brands = Brand.objects.annotate(
-            product_count=models.Count(
-                'products',
-                filter=models.Q(products__is_active=True)
-            )
-        ).filter(product_count__gt=0)
-        
-        # Get price range from active product lines
-        price_aggregation = ProductLine.objects.filter(
-            product__is_active=True,
-            is_active=True
-        ).aggregate(
-            min_price=models.Min('price'),
-            max_price=models.Max('price')
+
+        product = get_object_or_404(
+            Product.objects.filter(category__is_active=True)
+                .select_related('brand', 'category', 'owner')
+                .prefetch_related(
+                    'images',
+                    Prefetch('attribute_values', 
+                        queryset=AttributeValue.objects.select_related('attribute'))
+                ),
+            id=pk
         )
-        
-        # Handle case where there are no products
-        price_range = {
-            'min': price_aggregation['min_price'] or 0,
-            'max': price_aggregation['max_price'] or 1000
-        }
-        
-        return Response({
-            'categories': CategoryFilterSerializer(categories, many=True).data,
-            'brands': BrandFilterSerializer(brands, many=True).data,
-            'price_range': price_range  # Directly return the dict, not serialized
-        })
+        serializer = ProductDetailSerializer(product, context={'request': request})
+        return Response(serializer.data)
     
 
-class CategoryListView(generics.ListAPIView):
-    serializer_class = CategoryFilterSerializer
-    
+class ProductImageViewSet(viewsets.ModelViewSet):
+    serializer_class = ProductImageSerializer
+    permission_classes = [permissions.IsAuthenticated, IsProductOwnerOrReadOnly]
+
     def get_queryset(self):
-        return Category.objects.filter(
-            is_active=True
-        ).annotate(
-            product_count=Count(
-                'products',
-                filter=Q(products__is_active=True)
-            )
-        ).filter(
-            product_count__gt=0
-        ).order_by('name')
+        return ProductImage.objects.filter(
+            product_id=self.kwargs['product_pk'],
+            product__owner=self.request.user
+        )
 
-class BrandListView(generics.ListAPIView):
-    serializer_class = BrandFilterSerializer
-    
-    def get_queryset(self):
-        return Brand.objects.filter(
-            is_active=True
-        ).annotate(
-            product_count=Count(
-                'products',
-                filter=Q(products__is_active=True)
-            )
-        ).filter(
-            product_count__gt=0
-        ).order_by('name')
+    def perform_create(self, serializer):
+        product = get_object_or_404(
+            Product, 
+            id=self.kwargs['product_pk'],
+            owner=self.request.user
+        )
+        serializer.save(product=product)

@@ -1,94 +1,72 @@
 from rest_framework import serializers
-from .models import (
-    SubscriptionPlan, 
-    ShopSubscription, 
-    Shop, 
-    ShopMedia, 
-    ShopService, 
-    ShopPromotion
-)
-from django.contrib.auth import get_user_model
+from .models import Shop, ShopMedia, Promotion, Event, Services, Subscription, UserOffer
+import logging
 
-User = get_user_model()
+logger = logging.getLogger(__name__)
 
-class SubscriptionPlanSerializer(serializers.ModelSerializer):
+class SubscriptionSerializer(serializers.ModelSerializer):
     class Meta:
-        model = SubscriptionPlan
-        fields = '__all__'
-        read_only_fields = ('slug',)
+        model = Subscription
+        fields = ['id', 'status', 'start_date', 'end_date', 'is_trial', 'created_at']
 
-class ShopSubscriptionSerializer(serializers.ModelSerializer):
-    plan = SubscriptionPlanSerializer(read_only=True)
-    plan_id = serializers.PrimaryKeyRelatedField(
-        queryset=SubscriptionPlan.objects.all(),
-        source='plan',
-        write_only=True
-    )
-    days_remaining = serializers.IntegerField(read_only=True)
-
+class UserOfferSerializer(serializers.ModelSerializer):
     class Meta:
-        model = ShopSubscription
-        fields = '__all__'
-        read_only_fields = ('is_active', 'is_trial', 'created_at', 'days_remaining')
+        model = UserOffer
+        fields = ['id', 'free_products_remaining', 'free_estates_remaining', 'shop_trial_end_date', 'created_at']
 
 class ShopMediaSerializer(serializers.ModelSerializer):
-    image_url = serializers.SerializerMethodField()
-    video_url = serializers.SerializerMethodField()
+    shop = serializers.PrimaryKeyRelatedField(queryset=Shop.objects.all())
+    image = serializers.ImageField(use_url=True, allow_null=True, required=False)
+    video = serializers.FileField(use_url=True, allow_null=True, required=False)
+
+    def validate(self, data):
+        image = data.get('image')
+        video = data.get('video')
+        shop = data.get('shop')
+        logger.debug(f"Validating ShopMedia: shop={shop.id if shop else None}, image={bool(image)}, video={bool(video)}")
+        if not image and not video:
+            raise serializers.ValidationError({"non_field_errors": "Either image or video must be provided."})
+        if image and video:
+            raise serializers.ValidationError({"non_field_errors": "Only one of image or video can be provided."})
+        return data
 
     class Meta:
         model = ShopMedia
-        fields = '__all__'
-        read_only_fields = ('uploaded_at',)
+        fields = ['id', 'shop', 'image', 'video', 'is_primary']
 
-    def get_image_url(self, obj):
-        if obj.image:
-            return obj.image.url
-        return None
-
-    def get_video_url(self, obj):
-        if obj.video:
-            return obj.video.url
-        return None
-
-    def validate(self, data):
-        if not data.get('image') and not data.get('video'):
-            raise serializers.ValidationError("Either image or video must be provided")
-        return data
-
-class ShopServiceSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ShopService
-        fields = '__all__'
-        read_only_fields = ('shop',)
-
-class ShopPromotionSerializer(serializers.ModelSerializer):
-    is_active = serializers.BooleanField(read_only=True)
+class PromotionSerializer(serializers.ModelSerializer):
+    shop = serializers.PrimaryKeyRelatedField(queryset=Shop.objects.all())
 
     class Meta:
-        model = ShopPromotion
-        fields = '__all__'
-        read_only_fields = ('shop', 'views')
+        model = Promotion
+        fields = ['id', 'shop', 'title', 'description', 'start_date', 'end_date', 'created_at']
 
-class UserSerializer(serializers.ModelSerializer):
+class EventSerializer(serializers.ModelSerializer):
+    shop = serializers.PrimaryKeyRelatedField(queryset=Shop.objects.all())
+
     class Meta:
-        model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name')
+        model = Event
+        fields = ['id', 'shop', 'title', 'description', 'start_time', 'end_time', 'is_free', 'ticket_price', 'created_at']
+
+class ServicesSerializer(serializers.ModelSerializer):
+    shop = serializers.PrimaryKeyRelatedField(queryset=Shop.objects.all())
+
+    class Meta:
+        model = Services
+        fields = ['id', 'shop', 'name', 'description', 'price', 'duration', 'created_at']
 
 class ShopSerializer(serializers.ModelSerializer):
-    owner = UserSerializer(read_only=True)
-    active_subscription = ShopSubscriptionSerializer(read_only=True)
-    media_files = ShopMediaSerializer(many=True, read_only=True)
-    services = ShopServiceSerializer(many=True, read_only=True)
-    promotions = ShopPromotionSerializer(many=True, read_only=True)
-    is_in_trial = serializers.BooleanField(source='in_trial_period', read_only=True)
+    user = serializers.PrimaryKeyRelatedField(read_only=True)
+    services = ServicesSerializer(many=True, read_only=True)
+    promotions = PromotionSerializer(many=True, read_only=True)
+    events = EventSerializer(many=True, read_only=True)
+    media = ShopMediaSerializer(many=True, read_only=True)
+    subscription = SubscriptionSerializer(read_only=True)
 
     class Meta:
         model = Shop
-        fields = '__all__'
-        read_only_fields = ('slug', 'created_at', 'is_verified', 'is_active')
-
-    def validate_slug(self, value):
-        if Shop.objects.filter(slug=value).exists():
-            raise serializers.ValidationError("Shop with this slug already exists.")
-        return value
-    
+        fields = [
+            'id', 'user', 'name', 'phone', 'location', 'description', 'operating_hours',
+            'social_media', 'university_partner', 'created_at', 'updated_at',
+            'services', 'promotions', 'events', 'media', 'subscription'
+        ]

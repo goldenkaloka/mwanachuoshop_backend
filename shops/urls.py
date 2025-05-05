@@ -1,19 +1,16 @@
+from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import (
-    SubscriptionPlanViewSet,
-    ShopSubscriptionViewSet,
-    ShopViewSet,
-    ShopMediaViewSet,
-    ShopServiceViewSet,
-    ShopPromotionViewSet
-)
+from .views import ShopViewSet, ShopMediaViewSet, PromotionViewSet, EventViewSet, ServicesViewSet, UserOfferViewSet, SubscriptionViewSet
 
 router = DefaultRouter()
-router.register(r'subscription-plans', SubscriptionPlanViewSet)
-router.register(r'shop-subscriptions', ShopSubscriptionViewSet)
-router.register(r'shops', ShopViewSet)
-router.register(r'shop-media', ShopMediaViewSet)
-router.register(r'shop-services', ShopServiceViewSet)
-router.register(r'shop-promotions', ShopPromotionViewSet)
+router.register(r'shops', ShopViewSet, basename='shops')
+router.register(r'shop-media', ShopMediaViewSet, basename='shop-media')
+router.register(r'promotions', PromotionViewSet, basename='promotions')
+router.register(r'events', EventViewSet, basename='events')
+router.register(r'services', ServicesViewSet, basename='services')
+router.register(r'offers', UserOfferViewSet, basename='offers')
+router.register(r'subscriptions', SubscriptionViewSet, basename='subscriptions')
 
-urlpatterns = router.urls
+urlpatterns = [
+    path('', include(router.urls)),
+]
