@@ -1,98 +1,107 @@
 from django.contrib import admin
-from .models import PropertyType, Property, PropertyImage, Video
 from django.utils.html import format_html
+from .models import PropertyType, Property, PropertyImage
 
 class PropertyImageInline(admin.TabularInline):
     model = PropertyImage
     extra = 1
-    readonly_fields = ['thumbnail_preview']
-
-    def thumbnail_preview(self, obj):
+    readonly_fields = ['image_preview']
+    fields = ['image', 'image_preview', 'is_primary']
+    
+    def image_preview(self, obj):
         if obj.image:
-            return format_html('<img src="{}" width="100" height="auto" />', obj.image.url)
+            return format_html('<img src="{}" style="max-height: 100px;"/>', obj.image.url)
         return "-"
-    thumbnail_preview.short_description = 'Preview'
-
-class VideoInline(admin.TabularInline):
-    model = Video
-    extra = 1
-    readonly_fields = ['status_display', 'thumbnail_preview']
-    
-    def status_display(self, obj):
-        return obj.get_status_display()
-    status_display.short_description = 'Status'
-    
-    def thumbnail_preview(self, obj):
-        if obj.thumbnail:
-            return format_html('<img src="{}" width="100" height="auto" />', obj.thumbnail.url)
-        return "-"
-    thumbnail_preview.short_description = 'Thumbnail'
+    image_preview.short_description = 'Preview'
 
 @admin.register(PropertyType)
 class PropertyTypeAdmin(admin.ModelAdmin):
-    list_display = ('name', 'property_count')
+    list_display = ('name',)
     search_fields = ('name',)
-    
-    def property_count(self, obj):
-        return obj.properties.count()
-    property_count.short_description = 'Properties'
 
 @admin.register(Property)
 class PropertyAdmin(admin.ModelAdmin):
-    list_display = ('title', 'owner', 'property_type', 'location', 'price', 'is_available', 'created_at')
-    list_filter = ('property_type', 'is_available', 'created_at')
+    list_display = (
+        'title', 
+        'owner', 
+        'property_type', 
+        'location', 
+        'price',
+        'video_status',
+        'created_at'
+    )
+    list_filter = ('property_type', 'is_available', 'video_status')
     search_fields = ('title', 'location', 'owner__username')
-    prepopulated_fields = {'slug': ('title',)}
-    inlines = [PropertyImageInline, VideoInline]
-    readonly_fields = ('created_at', 'updated_at')
+    readonly_fields = (
+        'slug', 
+        'created_at', 
+        'updated_at',
+        'video_preview',
+        'thumbnail_preview'
+    )
     fieldsets = (
-        ('Basic Information', {
-            'fields': ('owner', 'property_type', 'title', 'slug')
+        ('Basic Info', {
+            'fields': (
+                'owner', 
+                'property_type',
+                'title',
+                'slug',
+                'features',
+                'location',
+                'price',
+                'is_available'
+            )
         }),
-        ('Details', {
-            'fields': ('features', 'location', 'price', 'is_available')
+        ('Video Info', {
+            'fields': (
+                'video_name',
+                'video_description',
+                'video',
+                'video_preview',
+                'thumbnail',
+                'thumbnail_preview',
+                'duration',
+                'hls_playlist',
+                'video_status',
+                'is_video_processing',
+                'video_error_message'
+            )
         }),
-        ('Timestamps', {
-            'fields': ('created_at', 'updated_at'),
-            'classes': ('collapse',)
+        ('Dates', {
+            'fields': (
+                'created_at',
+                'updated_at'
+            )
         }),
     )
-
-@admin.register(PropertyImage)
-class PropertyImageAdmin(admin.ModelAdmin):
-    list_display = ('property', 'is_primary', 'created_at', 'thumbnail_preview')
-    list_filter = ('is_primary',)
-    search_fields = ('property__title',)
-    readonly_fields = ('thumbnail_preview',)
-    
-    def thumbnail_preview(self, obj):
-        if obj.image:
-            return format_html('<img src="{}" width="100" height="auto" />', obj.image.url)
-        return "-"
-    thumbnail_preview.short_description = 'Preview'
-
-@admin.register(Video)
-class VideoAdmin(admin.ModelAdmin):
-    list_display = ('name', 'property', 'status_display', 'duration', 'created_at', 'video_preview')
-    list_filter = ('status', 'created_at')
-    search_fields = ('name', 'property__title')
-    readonly_fields = ('status_display', 'video_preview', 'thumbnail_preview', 'created_at', 'updated_at')
-    
-    def status_display(self, obj):
-        return obj.get_status_display()
-    status_display.short_description = 'Status'
+    inlines = [PropertyImageInline]
     
     def video_preview(self, obj):
         if obj.video:
             return format_html(
-                '<video width="150" height="auto" controls><source src="{}"></video>',
+                '<video width="300" controls><source src="{}"></video>',
                 obj.video.url
             )
         return "-"
-    video_preview.short_description = 'Preview'
+    video_preview.short_description = 'Video Preview'
     
     def thumbnail_preview(self, obj):
         if obj.thumbnail:
-            return format_html('<img src="{}" width="100" height="auto" />', obj.thumbnail.url)
+            return format_html(
+                '<img src="{}" style="max-height: 200px;"/>',
+                obj.thumbnail.url
+            )
         return "-"
-    thumbnail_preview.short_description = 'Thumbnail'
+    thumbnail_preview.short_description = 'Thumbnail Preview'
+
+@admin.register(PropertyImage)
+class PropertyImageAdmin(admin.ModelAdmin):
+    list_display = ('property', 'is_primary', 'created_at')
+    list_filter = ('is_primary', 'created_at')
+    readonly_fields = ['image_preview']
+    
+    def image_preview(self, obj):
+        if obj.image:
+            return format_html('<img src="{}" style="max-height: 200px;"/>', obj.image.url)
+        return "-"
+    image_preview.short_description = 'Preview'

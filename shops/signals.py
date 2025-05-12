@@ -28,27 +28,6 @@ def create_shop_subscription(sender, instance, created, **kwargs):
             is_trial=True
         )
 
-@receiver(pre_save, sender=Product)
-def check_product_creation_permissions(sender, instance, **kwargs):
-    user = instance.owner
-    shop = getattr(user, 'shop', None)
-    
-    if shop and shop.is_subscription_active():
-        return
-    
-    offer = getattr(user, 'offer', None)
-    if offer and offer.consume_free_product():
-        return
-    
-    payment_service = PaymentService.objects.get(name=PaymentService.ServiceName.PRODUCT_CREATION)
-    has_paid = Payment.objects.filter(
-        user=user,
-        service=payment_service,
-        status=Payment.PaymentStatus.COMPLETED
-    ).exists()
-    
-    if not has_paid:
-        raise PermissionDenied("You must purchase a product creation service to post more products.")
 
 @receiver(pre_save, sender=Property)
 def check_estate_creation_permissions(sender, instance, **kwargs):

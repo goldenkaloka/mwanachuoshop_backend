@@ -1,35 +1,51 @@
 from django.contrib import admin
+from django.contrib.contenttypes.admin import GenericTabularInline
 from .models import PaymentService, Payment
+
+
+from django.utils.html import format_html
 
 @admin.register(PaymentService)
 class PaymentServiceAdmin(admin.ModelAdmin):
-    list_display = ('name', 'price', 'description')
+    list_display = ('name', 'price', 'description_short')
     list_filter = ('name',)
     search_fields = ('name', 'description')
-    ordering = ('name',)
+    
+    def description_short(self, obj):
+        return obj.description[:50] + '...' if obj.description else ''
+    description_short.short_description = 'Description'
 
-    def get_name_display(self, obj):
-        return obj.get_name_display()
-    get_name_display.short_description = 'Service Name'
+class PaymentInline(GenericTabularInline):
+    model = Payment
+    extra = 0
+    readonly_fields = ('date_added', 'transaction_id')
+    fields = ('service', 'amount', 'status', 'provider', 'date_added', 'transaction_id')
 
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
-    list_display = ('user', 'service', 'amount', 'status', 'date_added', 'transaction_id')
-    list_filter = ('status', 'service', 'provider')
-    search_fields = ('user__username', 'transaction_id', 'external_id', 'account_number')
-    raw_id_fields = ('user', 'subscription')
-    date_hierarchy = 'date_added'
-    ordering = ('-date_added',)
-    actions = ['mark_completed', 'mark_failed']
-
-    def mark_completed(self, request, queryset):
-        queryset.update(status='completed')
-    mark_completed.short_description = 'Mark selected payments as completed'
-
-    def mark_failed(self, request, queryset):
-        queryset.update(status='failed')
-    mark_failed.short_description = 'Mark selected payments as failed'
-
-    def get_service_name(self, obj):
-        return obj.service.get_name_display()
-    get_service_name.short_description = 'Service'
+    list_display = ('id', 'user', 'service', 'amount', 'status', 'content_object_link', 'date_added')
+    list_filter = ('status', 'service', 'date_added')
+    search_fields = ('user__username', 'transaction_id', 'external_id')
+    readonly_fields = ('date_added', 'content_object_link')
+    fieldsets = (
+        (None, {
+            'fields': ('user', 'service', 'amount', 'status')
+        }),
+        ('Payment Details', {
+            'fields': ('transaction_id', 'external_id', 'provider', 'account_number')
+        }),
+        ('Related Object', {
+            'fields': ('content_type', 'object_id', 'content_object_link')
+        }),
+        ('Timestamps', {
+            'fields': ('date_added',)
+        }),
+    )
+    
+    def content_object_link(self, obj):
+        if obj.content_object:
+            return format_html('<a href="{}">{}</a>', 
+                             obj.content_object.get_admin_url(),
+                             str(obj.content_object))
+        return None
+    content_object_link.short_description = 'Related Object'

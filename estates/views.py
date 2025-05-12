@@ -1,219 +1,177 @@
-from rest_framework import viewsets, status, permissions, mixins, serializers
-from rest_framework.response import Response
-from rest_framework.decorators import action
-from django.shortcuts import get_object_or_404
 from django.http import FileResponse, Http404
+from rest_framework import viewsets, permissions, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
 from django.conf import settings
+from django_filters.rest_framework import DjangoFilterBackend
 import os
-from .models import Property, PropertyType, PropertyImage, Video
-from .serializers import (
-    PropertySerializer, 
-    PropertyTypeSerializer,
-    PropertyImageSerializer,
-    VideoSerializer
-)
-from .tasks import process_video_task
+import logging
+import re
 
-class PropertyTypeViewSet(viewsets.ReadOnlyModelViewSet):
+from estates.models import Property, PropertyImage, PropertyType
+from estates.serializers import PropertyImageSerializer, PropertySerializer, PropertyTypeSerializer
+
+
+logger = logging.getLogger(__name__) # Uses 'estates' if this file is in 'estates' app
+
+class IsOwnerOrAdmin(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        if hasattr(obj, 'owner'):
+            return obj.owner == request.user or request.user.is_staff
+        elif hasattr(obj, 'property'): # For PropertyImage
+            return obj.property.owner == request.user or request.user.is_staff
+        return False
+
+class PropertyTypeViewSet(viewsets.ModelViewSet):
     queryset = PropertyType.objects.all()
     serializer_class = PropertyTypeSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-    pagination_class = None
+    
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [permissions.AllowAny()]
+        return [permissions.IsAdminUser()]
 
 class PropertyViewSet(viewsets.ModelViewSet):
+    queryset = Property.objects.all()
     serializer_class = PropertySerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-    lookup_field = 'slug'
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['is_available', 'property_type', 'video_status']
     
-    def get_queryset(self):
-        queryset = Property.objects.select_related(
-            'owner', 'property_type'
-        ).prefetch_related(
-            'images', 'videos'
-        )
-        
-        if self.request.user.is_authenticated:
-            if self.action == 'list':
-                return queryset.filter(owner=self.request.user)
-        else:
-            return queryset.filter(is_available=True)
-        
-        return queryset
-    
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve', 'serve_hls_playlist', 'serve_hls_segment']:
+            return [permissions.AllowAny()]
+        elif self.action == 'create':
+            return [permissions.IsAuthenticated()]
+        return [permissions.IsAuthenticated(), IsOwnerOrAdmin()]
+
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
-    
-    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
-    def upload_images(self, request, slug=None):
-        property = self.get_object()
-        images = request.FILES.getlist('images')
-        
-        if not images:
-            return Response(
-                {"error": "No images provided"}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        image_instances = []
-        has_primary = PropertyImage.objects.filter(
-            property=property, 
-            is_primary=True
-        ).exists()
-        
-        for image in images:
-            image_instance = PropertyImage(
-                property=property,
-                image=image,
-                is_primary=(not has_primary and not image_instances)
-            )
-            image_instance.save()
-            image_instances.append(image_instance)
-            has_primary = True
-        
-        serializer = PropertyImageSerializer(image_instances, many=True)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-    
-    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
-    def set_primary_image(self, request, slug=None):
-        property = self.get_object()
-        image_id = request.data.get('image_id')
-        
-        if not image_id:
-            return Response(
-                {"error": "image_id is required"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        try:
-            image = PropertyImage.objects.get(id=image_id, property=property)
-            image.is_primary = True
-            image.save()
-            return Response(
-                {"message": "Primary image set successfully"},
-                status=status.HTTP_200_OK
-            )
-        except PropertyImage.DoesNotExist:
-            return Response(
-                {"error": "Image not found"},
-                status=status.HTTP_404_NOT_FOUND
-            )
 
-class PropertyImageViewSet(
-    mixins.CreateModelMixin,
-    mixins.DestroyModelMixin,
-    mixins.ListModelMixin,
-    viewsets.GenericViewSet
-):
-    serializer_class = PropertyImageSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    
     def get_queryset(self):
-        return PropertyImage.objects.filter(
-            property__slug=self.kwargs['property_slug'],
-            property__owner=self.request.user
-        ).order_by('-is_primary', 'created_at')
-    
-    def perform_create(self, serializer):
-        property = get_object_or_404(
-            Property,
-            slug=self.kwargs['property_slug'],
-            owner=self.request.user
-        )
-        has_primary = PropertyImage.objects.filter(
-            property=property,
-            is_primary=True
-        ).exists()
+        queryset = super().get_queryset()
+        my_properties = self.request.query_params.get('my_properties', 'false').lower() == 'true'
+        has_video = self.request.query_params.get('has_video', 'false').lower() == 'true'
         
-        serializer.save(
-            property=property,
-            is_primary=not has_primary
-        )
+        if my_properties:
+            if not self.request.user.is_authenticated:
+                # Consider raising AuthenticationFailed for more standard DRF behavior
+                raise permissions.PermissionDenied("Authentication required for user-specific properties.")
+            queryset = queryset.filter(owner=self.request.user)
+        elif not self.request.user.is_staff: # Apply is_available only if not staff and not my_properties
+            queryset = queryset.filter(is_available=True)
+            
+        if has_video:
+            queryset = queryset.exclude(video__isnull=True).filter(video_status='Completed')
+            
+        return queryset.select_related('owner', 'property_type').prefetch_related('images')
 
-class VideoViewSet(viewsets.ModelViewSet):
-    serializer_class = VideoSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-    
-    def get_queryset(self):
-        queryset = Video.objects.select_related('property', 'property__owner')
-        
-        if self.request.user.is_authenticated:
-            if 'property_slug' in self.kwargs:
-                return queryset.filter(
-                    property__slug=self.kwargs['property_slug'],
-                    property__owner=self.request.user
-                )
-            return queryset.filter(property__owner=self.request.user)
-        
-        return queryset.filter(
-            property__is_available=True,
-            status=Video.COMPLETED
-        )
-    
-    def perform_create(self, serializer):
-        if 'property_slug' in self.kwargs:
-            property = get_object_or_404(
-                Property,
-                slug=self.kwargs['property_slug'],
-                owner=self.request.user
-            )
-            video = serializer.save(property=property)
-            # Trigger async video processing
-            process_video_task.delay(video.id)
-        else:
-            raise serializers.ValidationError("Property slug is required")
-    
-    @action(detail=True, methods=['get'])
-    def hls_playlist(self, request, pk=None):
-        video = self.get_object()
-        
-        if not video.hls_playlist:
-            return Response(
-                {"error": "HLS playlist not available"},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
-        hls_playlist_path = os.path.join(settings.MEDIA_ROOT, video.hls_playlist)
-        
-        if not os.path.exists(hls_playlist_path):
-            return Response(
-                {"error": "HLS playlist file not found"},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        instance = serializer.instance
+        # Exclude images from the response when a property is first created.
+        response_serializer = self.get_serializer(instance, context={'exclude_images': True})
+        headers = self.get_success_headers(response_serializer.data)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        # Allow excluding images from property list/detail via query param
+        context['exclude_images'] = self.request.query_params.get('exclude_images', 'false').lower() == 'true'
+        return context
+
+    @action(detail=True, methods=['get'], url_path='playlist', url_name='property-playlist')
+    def serve_hls_playlist(self, request, pk=None):
+        logger.info(f"Attempting to serve HLS playlist for Property ID (pk): {pk}")
         try:
-            with open(hls_playlist_path, 'r') as m3u8_file:
-                m3u8_content = m3u8_file.read()
+            # This get_object_or_404 will raise Http404 if not found or video_status is not 'Completed'
+            property_instance = get_object_or_404(Property, pk=pk, video_status='Completed')
+            logger.info(f"Property ID {pk} found with video_status='Completed'. Playlist path: {property_instance.hls_playlist}")
+        except Http404:
+            logger.warning(f"Property ID {pk} not found or video_status not 'Completed' when requesting playlist.")
+            # This response will be sent if get_object_or_404 fails
+            return Response({"error": "Playlist not found or video processing not complete."}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            if not property_instance.hls_playlist:
+                logger.error(f"Property ID {pk} has no HLS playlist path defined.")
+                return Response({"error": "HLS playlist path not configured for this property."}, status=status.HTTP_404_NOT_FOUND)
+
+            hls_playlist_path = os.path.join(settings.MEDIA_ROOT, str(property_instance.hls_playlist))
             
-            base_url = request.build_absolute_uri('/')[:-1]
-            m3u8_content = m3u8_content.replace(
-                '{{ dynamic_path }}', 
-                f"{base_url}{reverse('video-hls-segment', kwargs={'pk': video.pk})}/"
-            )
-            
-            return Response(
-                m3u8_content,
-                content_type='application/vnd.apple.mpegurl'
-            )
+            if not os.path.exists(hls_playlist_path):
+                logger.error(f"HLS playlist file not found at {hls_playlist_path} for Property ID {pk}")
+                return Response({"error": "HLS playlist file not found on server."}, status=status.HTTP_404_NOT_FOUND)
+
+            logger.info(f"Serving HLS playlist for Property ID {pk} from {hls_playlist_path}")
+            return FileResponse(open(hls_playlist_path, 'rb'), content_type='application/vnd.apple.mpegurl')
+        
         except Exception as e:
-            return Response(
-                {"error": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            logger.error(f"Failed to serve HLS playlist for Property ID {pk}: {str(e)}", exc_info=True)
+            return Response({"error": f"Internal server error serving playlist: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+    @action(detail=True, methods=['get'], url_path='segments/(?P<segment_name>[^/]+\.ts)$') # More specific regex for segment_name
+    def serve_hls_segment(self, request, pk=None, segment_name=None):
+        logger.info(f"SEGMENT REQUEST: pk='{pk}', segment_name='{segment_name}'")
+
+        try:
+            # This is the most likely point of failure if a generic 404 is returned without other logs
+            property_instance = get_object_or_404(Property, pk=pk, video_status='Completed')
+            logger.info(f"SEGMENT: Property ID {pk} (video_status='Completed') found for segment '{segment_name}'.")
+        except Http404:
+            # This log will appear if the property is not found OR its video_status is not 'Completed'
+            logger.warning(f"SEGMENT: Property ID {pk} not found OR video_status not 'Completed' for segment '{segment_name}'. Responding with 404.")
+            return Response({"error": "Segment not found or video processing not complete."}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            if not property_instance.hls_playlist:
+                logger.error(f"Property ID {pk} has no HLS playlist path defined, cannot determine segment directory.")
+                return Response({"error": "HLS playlist path not configured, cannot serve segment."}, status=status.HTTP_404_NOT_FOUND)
+
+            # Normalize paths for Windows/Linux compatibility
+            # Assumes hls_playlist field stores path relative to MEDIA_ROOT, e.g., 'property_videos/123/video.m3u8'
+            hls_directory = os.path.normpath(os.path.dirname(os.path.join(settings.MEDIA_ROOT, str(property_instance.hls_playlist))))
+            segment_path = os.path.normpath(os.path.join(hls_directory, segment_name))
+            
+            logger.debug(f"SEGMENT: Attempting to serve segment. Property_ID={pk}, Segment_Name='{segment_name}', Full_Path='{segment_path}'")
+
+            if not os.path.exists(segment_path):
+                logger.error(f"SEGMENT: File not found at path '{segment_path}' for Property ID {pk}, segment '{segment_name}'.")
+                return Response({"error": f"HLS segment content file not found at '{segment_path}'"}, status=status.HTTP_404_NOT_FOUND)
+            
+            if not os.access(segment_path, os.R_OK):
+                logger.error(f"SEGMENT: File at '{segment_path}' is not readable for Property ID {pk}, segment '{segment_name}'.")
+                return Response({"error": "Segment content not readable (permission issue)."}, status=status.HTTP_403_FORBIDDEN)
+
+            logger.info(f"SEGMENT: Serving segment '{segment_name}' for Property ID {pk} from '{segment_path}'")
+            return FileResponse(open(segment_path, 'rb'), content_type='video/mp2t')
+        
+        except FileNotFoundError: # Should be caught by os.path.exists, but good as a fallback.
+            logger.error(f"SEGMENT: FileNotFoundError for Property ID {pk}, segment '{segment_name}'. Path: '{segment_path}'")
+            return Response({"error": f"HLS segment content (FileNotFoundError) for '{segment_name}'"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"SEGMENT: Generic error serving segment for Property ID {pk}, segment '{segment_name}': {str(e)}", exc_info=True)
+            return Response({"error": f"Failed to serve HLS segment: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class PropertyImageViewSet(viewsets.ModelViewSet):
+    queryset = PropertyImage.objects.all()
+    serializer_class = PropertyImageSerializer
     
-    @action(detail=True, methods=['get'], url_path='hls_segment/(?P<segment_name>[^/.]+)')
-    def hls_segment(self, request, pk=None, segment_name=None):
-        video = self.get_object()
-        
-        if not video.hls_playlist:
-            raise Http404("HLS playlist not available")
-        
-        hls_directory = os.path.dirname(os.path.join(settings.MEDIA_ROOT, video.hls_playlist))
-        segment_path = os.path.join(hls_directory, segment_name)
-        
-        if not os.path.exists(segment_path):
-            raise Http404("HLS segment not found")
-        
-        return FileResponse(
-            open(segment_path, 'rb'),
-            content_type='video/mp2t'
-        )
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated(), IsOwnerOrAdmin()]
+
+    def perform_create(self, serializer):
+        property_instance = serializer.validated_data['property']
+        # Ensure the user owns the property or is admin
+        if property_instance.owner != self.request.user and not self.request.user.is_staff:
+            raise permissions.PermissionDenied("You can only add images to your own properties.")
+        serializer.save()
+
+    def get_queryset(self):
+        return super().get_queryset().select_related('property')

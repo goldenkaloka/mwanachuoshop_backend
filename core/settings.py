@@ -2,7 +2,6 @@ import os
 from pathlib import Path
 from datetime import timedelta
 from decouple import config
-from azampay import Azampay  # Import the Azampay class
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -18,7 +17,8 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
-     'mptt',
+    'mptt',
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -44,7 +44,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'allauth.socialaccount',
     'django_cleanup.apps.CleanupConfig',
-    'django_celery_results',
+    'django_q',
 
 ]
 
@@ -136,6 +136,19 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
 
+# Media settings
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_URL = '/media/'
+
+# Video processing directories
+HLS_OUTPUT_DIR = os.path.join(MEDIA_ROOT, 'hls')
+THUMBNAIL_DIR = os.path.join(MEDIA_ROOT, 'thumbnails')
+
+# Create directories if they don't exist
+os.makedirs(HLS_OUTPUT_DIR, exist_ok=True)
+os.makedirs(THUMBNAIL_DIR, exist_ok=True)
+
+
 # Media files (user uploaded content)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
@@ -150,7 +163,7 @@ CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
    'http://172.31.7.161:5173',
-   'https://c187-41-93-69-130.ngrok-free.app ',
+   'https://master-relevant-flounder.ngrok-free.app',
 ]
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = ['DELETE', 'GET', 'OPTIONS', 'PATCH', 'POST', 'PUT']
@@ -208,7 +221,7 @@ ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
 
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://c187-41-93-69-130.ngrok-free.app '
+    'https://master-relevant-flounder.ngrok-free.app'
 ]
 
 
@@ -220,12 +233,12 @@ AZAMPAY_CONFIG = {
     'SANDBOX': True,  
 }
 
-AZAMPAY_CLIENT = Azampay(
-    app_name=AZAMPAY_CONFIG['APP_NAME'],
-    client_id=AZAMPAY_CONFIG['CLIENT_ID'],
-    client_secret=AZAMPAY_CONFIG['CLIENT_SECRET'],
-    sandbox=AZAMPAY_CONFIG['SANDBOX'],
-)
+# AZAMPAY_CLIENT = Azampay(
+#     app_name=AZAMPAY_CONFIG['APP_NAME'],
+#     client_id=AZAMPAY_CONFIG['CLIENT_ID'],
+#     client_secret=AZAMPAY_CONFIG['CLIENT_SECRET'],
+#     sandbox=AZAMPAY_CONFIG['SANDBOX'],
+# )
 
 # Logging configuration
 LOGGING = {
@@ -246,10 +259,50 @@ LOGGING = {
 
 
 # Celery Configuration
-CELERY_BROKER_URL = 'amqp://guest:guest@localhost:5672//'
-CELERY_RESULT_BACKEND = 'django-db'
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_SERIALIZER = 'json'
-CELERY_TIMEZONE = 'UTC'
-CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+
+# Django-Q Configuration
+Q_CLUSTER = {
+    'name': 'VideoProcessingCluster',
+    'workers': 4,  # Number of worker processes
+    'recycle': 500,
+    'retry': 60 * 31,  
+    'timeout': 60 * 30,  # 30 minute timeout for video processing
+    'compress': True,  # Compress task data
+    'save_limit': 250,  # Limit saved tasks
+    'queue_limit': 100,  # Maximum queued tasks
+    'cpu_affinity': 1,  # Better for CPU-intensive tasks
+    'label': 'Video Processing',
+    'redis': {
+        'host': '127.0.0.1',
+        'port': 6379,
+        'db': 0, 
+        'password': None,
+        'socket_timeout': None,
+        'unix_socket_path': None
+    }
+}
+
+
+JAZZMIN_SETTINGS = {
+    # Title on the brand (19 chars max)
+    "site_title": "Mwanachuoshop",
+    "site_header": "Mwanachuoshop admin",
+    "site_brand": "Mwanachuoshop",
+    "welcome_sign": "Welcome to Mwanachuoshop admin panel",
+    
+    # UI Tweaks
+    "show_ui_builder": True,  # Enable UI configurator (for live customization)
+    "navigation_expanded": True,  # Expand sidebar by default
+    
+    # Custom icons
+    "icons": {
+        "auth.user": "fas fa-user",
+        "auth.Group": "fas fa-users",
+        "payments.Payment": "fas fa-credit-card",
+        "products.Product": "fas fa-box",
+        "products.Category": "fas fa-tags",
+    },
+    
+    # Theme options
+    "theme": "dark",  # dark/light
+}
