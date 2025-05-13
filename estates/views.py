@@ -1,19 +1,18 @@
+import os
 from django.http import FileResponse, Http404
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.filters import SearchFilter
 from django.shortcuts import get_object_or_404
 from django.conf import settings
 from django_filters.rest_framework import DjangoFilterBackend
-import os
 import logging
-import re
 
 from estates.models import Property, PropertyImage, PropertyType
 from estates.serializers import PropertyImageSerializer, PropertySerializer, PropertyTypeSerializer
 
-
-logger = logging.getLogger(__name__) # Uses 'estates' if this file is in 'estates' app
+logger = logging.getLogger(__name__)
 
 class IsOwnerOrAdmin(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
@@ -21,7 +20,7 @@ class IsOwnerOrAdmin(permissions.BasePermission):
             return True
         if hasattr(obj, 'owner'):
             return obj.owner == request.user or request.user.is_staff
-        elif hasattr(obj, 'property'): # For PropertyImage
+        elif hasattr(obj, 'property'):
             return obj.property.owner == request.user or request.user.is_staff
         return False
 
@@ -37,8 +36,9 @@ class PropertyTypeViewSet(viewsets.ModelViewSet):
 class PropertyViewSet(viewsets.ModelViewSet):
     queryset = Property.objects.all()
     serializer_class = PropertySerializer
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = ['is_available', 'property_type', 'video_status']
+    search_fields = ['title', 'location']  # Enable search on title and location
     
     def get_permissions(self):
         if self.action in ['list', 'retrieve', 'serve_hls_playlist', 'serve_hls_segment']:
@@ -57,10 +57,9 @@ class PropertyViewSet(viewsets.ModelViewSet):
         
         if my_properties:
             if not self.request.user.is_authenticated:
-                # Consider raising AuthenticationFailed for more standard DRF behavior
                 raise permissions.PermissionDenied("Authentication required for user-specific properties.")
             queryset = queryset.filter(owner=self.request.user)
-        elif not self.request.user.is_staff: # Apply is_available only if not staff and not my_properties
+        elif not self.request.user.is_staff:
             queryset = queryset.filter(is_available=True)
             
         if has_video:
@@ -73,14 +72,12 @@ class PropertyViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         instance = serializer.instance
-        # Exclude images from the response when a property is first created.
         response_serializer = self.get_serializer(instance, context={'exclude_images': True})
         headers = self.get_success_headers(response_serializer.data)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        # Allow excluding images from property list/detail via query param
         context['exclude_images'] = self.request.query_params.get('exclude_images', 'false').lower() == 'true'
         return context
 
@@ -88,12 +85,10 @@ class PropertyViewSet(viewsets.ModelViewSet):
     def serve_hls_playlist(self, request, pk=None):
         logger.info(f"Attempting to serve HLS playlist for Property ID (pk): {pk}")
         try:
-            # This get_object_or_404 will raise Http404 if not found or video_status is not 'Completed'
             property_instance = get_object_or_404(Property, pk=pk, video_status='Completed')
             logger.info(f"Property ID {pk} found with video_status='Completed'. Playlist path: {property_instance.hls_playlist}")
         except Http404:
             logger.warning(f"Property ID {pk} not found or video_status not 'Completed' when requesting playlist.")
-            # This response will be sent if get_object_or_404 fails
             return Response({"error": "Playlist not found or video processing not complete."}, status=status.HTTP_404_NOT_FOUND)
 
         try:
@@ -114,16 +109,14 @@ class PropertyViewSet(viewsets.ModelViewSet):
             logger.error(f"Failed to serve HLS playlist for Property ID {pk}: {str(e)}", exc_info=True)
             return Response({"error": f"Internal server error serving playlist: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
-    @action(detail=True, methods=['get'], url_path='segments/(?P<segment_name>[^/]+\.ts)$') # More specific regex for segment_name
+    @action(detail=True, methods=['get'], url_path='segments/(?P<segment_name>[^/]+\.ts)$')
     def serve_hls_segment(self, request, pk=None, segment_name=None):
         logger.info(f"SEGMENT REQUEST: pk='{pk}', segment_name='{segment_name}'")
 
         try:
-            # This is the most likely point of failure if a generic 404 is returned without other logs
             property_instance = get_object_or_404(Property, pk=pk, video_status='Completed')
             logger.info(f"SEGMENT: Property ID {pk} (video_status='Completed') found for segment '{segment_name}'.")
         except Http404:
-            # This log will appear if the property is not found OR its video_status is not 'Completed'
             logger.warning(f"SEGMENT: Property ID {pk} not found OR video_status not 'Completed' for segment '{segment_name}'. Responding with 404.")
             return Response({"error": "Segment not found or video processing not complete."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -132,8 +125,6 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 logger.error(f"Property ID {pk} has no HLS playlist path defined, cannot determine segment directory.")
                 return Response({"error": "HLS playlist path not configured, cannot serve segment."}, status=status.HTTP_404_NOT_FOUND)
 
-            # Normalize paths for Windows/Linux compatibility
-            # Assumes hls_playlist field stores path relative to MEDIA_ROOT, e.g., 'property_videos/123/video.m3u8'
             hls_directory = os.path.normpath(os.path.dirname(os.path.join(settings.MEDIA_ROOT, str(property_instance.hls_playlist))))
             segment_path = os.path.normpath(os.path.join(hls_directory, segment_name))
             
@@ -150,7 +141,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
             logger.info(f"SEGMENT: Serving segment '{segment_name}' for Property ID {pk} from '{segment_path}'")
             return FileResponse(open(segment_path, 'rb'), content_type='video/mp2t')
         
-        except FileNotFoundError: # Should be caught by os.path.exists, but good as a fallback.
+        except FileNotFoundError:
             logger.error(f"SEGMENT: FileNotFoundError for Property ID {pk}, segment '{segment_name}'. Path: '{segment_path}'")
             return Response({"error": f"HLS segment content (FileNotFoundError) for '{segment_name}'"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
@@ -168,7 +159,6 @@ class PropertyImageViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         property_instance = serializer.validated_data['property']
-        # Ensure the user owns the property or is admin
         if property_instance.owner != self.request.user and not self.request.user.is_staff:
             raise permissions.PermissionDenied("You can only add images to your own properties.")
         serializer.save()
