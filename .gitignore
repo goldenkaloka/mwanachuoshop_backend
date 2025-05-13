@@ -1,3 +1,81 @@
-golden//
-dbsqlite3.db//
-media//
+# Django/Python
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+*.egg
+*.sqlite3
+db.sqlite3
+.env
+.env.*
+*.log
+*.pot
+*.mo
+*.po~
+
+# Virtual Environment
+golden/
+golden/*
+!golden/.gitkeep  # Optional: Keep empty virtualenv folder structure if needed
+
+# Media Files
+media/
+media/*
+!media/.gitkeep  # Optional: Keep empty media folder structure
+# Allow specific placeholder files if needed (uncomment if applicable)
+# !media/placeholder.jpg
+
+# Static Files (collected by Django)
+staticfiles/
+static_root/
+
+# Django Migrations (optional, only if you don't want to track migrations)
+# */migrations/*
+# !*/migrations/__init__.py
+
+
+# Git LFS (if used for large files)
+# Uncomment if you set up Git LFS for videos/images
+# *.mp4
+# *.mov
+# *.avi
+# *.mkv
+# *.webm
+# *.jpg
+# *.png
+# *.jpeg
+
+# OS-Specific Files
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# IDE/Editor Files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Testing/Coverage
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+htmlcov/
+.tox/
+.pytest_cache/
+.cache/
+
+# Build Tools
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Other
+*.bak
+*.swp
+*.swo
+*.tmp
+*.temp
