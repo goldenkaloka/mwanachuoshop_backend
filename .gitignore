@@ -38,14 +38,14 @@ static_root/
 
 # Git LFS (if used for large files)
 # Uncomment if you set up Git LFS for videos/images
-# *.mp4
-# *.mov
-# *.avi
-# *.mkv
-# *.webm
-# *.jpg
-# *.png
-# *.jpeg
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+*.jpg
+*.png
+*.jpeg
 
 # OS-Specific Files
 .DS_Store
