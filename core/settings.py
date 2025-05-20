@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount',
     'django_cleanup.apps.CleanupConfig',
     'django_q',
+    'drf_spectacular',
 
 ]
 
@@ -159,15 +160,7 @@ STATICFILES_FINDERS = [
     'django.contrib.staticfiles.finders.AppDirectoriesFinder',
 ]
 
-CORS_ALLOW_ALL_ORIGINS = False
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5173',
-   'http://172.31.7.161:5173',
-   'https://master-relevant-flounder.ngrok-free.app',
-]
-CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_METHODS = ['DELETE', 'GET', 'OPTIONS', 'PATCH', 'POST', 'PUT']
-CORS_ALLOW_HEADERS = ['accept', 'authorization', 'content-type', 'origin', 'x-csrftoken']
+CORS_ALLOW_ALL_ORIGINS = True
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -184,9 +177,10 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticatedOrReadOnly',
     ),
-    
-
+     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
+
+
 
 
 REST_AUTH = {
@@ -305,4 +299,12 @@ JAZZMIN_SETTINGS = {
     
     # Theme options
     "theme": "dark",  # dark/light
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Mwanachuoshop API',
+    'DESCRIPTION': 'mwanachuoshop api is an api which will server as a basis for all mwanachuoshop system management',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    # OTHER SETTINGS
 }

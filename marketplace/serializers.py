@@ -1,7 +1,7 @@
 from decimal import Decimal
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import Category, Brand, Attribute, AttributeValue, Product, ProductImage
+from .models import Category, Brand, Attribute, AttributeValue, Product, ProductImage, WhatsAppClick
 from shops.models import Shop, UserOffer
 
 User = get_user_model()
@@ -210,3 +210,21 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             'instagram': profile.instagram if profile else None,
             'tiktok': profile.tiktok if profile else None
         }
+    
+
+class WhatsAppClickSerializer(serializers.ModelSerializer):
+    product_id = serializers.PrimaryKeyRelatedField(
+        queryset=Product.objects.all(),
+        source='product'
+    )
+
+    class Meta:
+        model = WhatsAppClick
+        fields = ['product_id', 'clicked_at']
+        read_only_fields = ['clicked_at']
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        validated_data['user'] = request.user if request.user.is_authenticated else None
+        validated_data['ip_address'] = request.META.get('REMOTE_ADDR')
+        return super().create(validated_data)

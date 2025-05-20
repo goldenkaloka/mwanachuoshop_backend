@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from django.urls import reverse
 from .models import Property, PropertyImage, PropertyType
+from users.models import NewUser, Profile
+from dj_rest_auth.serializers import UserDetailsSerializer
 
 class PropertyTypeSerializer(serializers.ModelSerializer):
     class Meta:
@@ -15,8 +17,34 @@ class PropertyImageSerializer(serializers.ModelSerializer):
         fields = ['id', 'property', 'image', 'is_primary', 'created_at']
         read_only_fields = ['created_at']
 
+class CustomUserDetailsSerializer(UserDetailsSerializer):
+    profile_id = serializers.IntegerField(source='profile.id', read_only=True)
+    whatsapp = serializers.CharField(source='profile.whatsapp', read_only=True, allow_null=True)
+    profile_image = serializers.ImageField(source='profile.image', read_only=True, allow_null=True)
+
+    class Meta(UserDetailsSerializer.Meta):
+        model = NewUser
+        fields = UserDetailsSerializer.Meta.fields + (
+            'phonenumber',
+            'profile_id',
+            'whatsapp',
+            'profile_image',
+        )
+        read_only_fields = ('email', 'username', 'phonenumber', 'profile_id', 'whatsapp', 'profile_image')
+
+class ProfileSerializer(serializers.ModelSerializer):
+    user = CustomUserDetailsSerializer(read_only=True)
+
+    class Meta:
+        model = Profile
+        fields = '__all__'
+        read_only_fields = ('user',)
+
+    def update(self, instance, validated_data):
+        return super().update(instance, validated_data)
+
 class PropertySerializer(serializers.ModelSerializer):
-    owner = serializers.PrimaryKeyRelatedField(read_only=True, default=serializers.CurrentUserDefault())
+    owner = CustomUserDetailsSerializer(read_only=True, default=serializers.CurrentUserDefault())
     property_type = PropertyTypeSerializer(read_only=True)
     property_type_id = serializers.PrimaryKeyRelatedField(
         queryset=PropertyType.objects.all(),
@@ -25,6 +53,16 @@ class PropertySerializer(serializers.ModelSerializer):
     )
     images = PropertyImageSerializer(many=True, read_only=True)
     hls_playlist_url = serializers.SerializerMethodField()
+
+    # Explicitly define user-filled fields
+    title = serializers.CharField(max_length=100, required=True)
+    features = serializers.CharField(required=True)
+    location = serializers.CharField(max_length=100, required=True)
+    price = serializers.IntegerField(min_value=1, required=True)
+    video = serializers.FileField(required=True)
+    is_available = serializers.BooleanField(default=True)
+    video_name = serializers.CharField(max_length=500, required=False, allow_blank=True)
+    video_description = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = Property
@@ -57,9 +95,6 @@ class PropertySerializer(serializers.ModelSerializer):
             'slug',
             'created_at',
             'updated_at',
-            'video_name',
-            'video_description',
-            'video',
             'thumbnail',
             'duration',
             'hls_playlist',

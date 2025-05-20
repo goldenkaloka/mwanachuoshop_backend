@@ -1,6 +1,7 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Prefetch, Q
 from django.db import transaction
@@ -9,9 +10,10 @@ from .models import Category, Brand, Attribute, AttributeValue, Product, Product
 from .serializers import (
     CategorySerializer, BrandSerializer, AttributeSerializer,
     AttributeValueSerializer, ProductDetailSerializer, 
-    ProductListSerializer, ProductSerializer, ProductImageSerializer
+    ProductListSerializer, ProductSerializer, ProductImageSerializer, WhatsAppClickSerializer
 )
 from .permissions import IsAdminOrReadOnly, IsOwnerOrReadOnly, IsProductOwnerOrReadOnly
+from .pagination import InfiniteScrollCursorPagination
 from shops.models import Shop, UserOffer
 from payments.models import Payment
 from django.contrib.contenttypes.models import ContentType
@@ -80,6 +82,7 @@ class AttributeValueViewSet(viewsets.ModelViewSet):
 class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
     permission_classes = [permissions.IsAuthenticated, IsOwnerOrReadOnly]
+    pagination_class = InfiniteScrollCursorPagination
 
     def get_queryset(self):
         queryset = Product.objects.filter(
@@ -89,19 +92,24 @@ class ProductViewSet(viewsets.ModelViewSet):
         ).prefetch_related(
             'images',
             Prefetch('attribute_values', queryset=AttributeValue.objects.select_related('attribute'))
-        )
+        ).order_by('-created_at')
 
         if category_id := self.request.query_params.get('category'):
-            queryset = queryset.filter(category__id=category_id)
+            try:
+                queryset = queryset.filter(category__id=int(category_id))
+            except (ValueError, TypeError):
+                queryset = Product.objects.none()
         if brand_id := self.request.query_params.get('brand'):
-            queryset = queryset.filter(brand__id=brand_id)
+            try:
+                queryset = queryset.filter(brand__id=int(brand_id))
+            except (ValueError, TypeError):
+                queryset = Product.objects.none()
 
         return queryset
 
     def perform_create(self, serializer):
         user = self.request.user
         shop = Shop.objects.filter(user=user).first()
-        # Create product with is_active=False by default
         serializer.save(owner=user, shop=shop, is_active=False)
 
     @action(detail=False, methods=['post'], url_path='confirm-product-creation', 
@@ -159,7 +167,6 @@ class ProductViewSet(viewsets.ModelViewSet):
 
             # Paid activation
             if not transaction_id:
-                # Calculate payment amount: 0.1% of product price, minimum $1.00
                 payment_amount = max(
                     Decimal('1.00'),
                     (product.price * Decimal('0.001')).quantize(Decimal('0.01'))
@@ -206,19 +213,31 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, permission_classes=[permissions.AllowAny])
     def recent(self, request):
-        products = Product.objects.filter(
+        queryset = Product.objects.filter(
             category__is_active=True, is_active=True
         ).select_related(
             'brand', 'category', 'owner'
         ).prefetch_related(
             Prefetch('images', queryset=ProductImage.objects.order_by('-is_primary'))
-        ).order_by('-created_at')[:50]
+        ).order_by('-created_at')
 
-        serializer = ProductListSerializer(products, many=True, context={'request': request})
-        return Response(serializer.data)
+        logger.info(f"Recent queryset type: {type(queryset)}")
+        page = self.paginate_queryset(queryset)
+        logger.info(f"Recent page type: {type(page)}")
+        if page is not None:
+            serializer = ProductListSerializer(page, many=True, context={'request': request})
+            return self.get_paginated_response(serializer.data)
+
+        serializer = ProductListSerializer(queryset, many=True, context={'request': request})
+        return Response({
+            'next': None,
+            'previous': None,
+            'results': serializer.data
+        })
 
     @action(detail=False, permission_classes=[permissions.AllowAny])
     def public_list(self, request):
+        logger.info(f"Public list query params: {request.query_params}")
         queryset = Product.objects.filter(
             category__is_active=True, is_active=True
         ).select_related(
@@ -226,33 +245,73 @@ class ProductViewSet(viewsets.ModelViewSet):
         ).prefetch_related(
             'images',
             Prefetch('attribute_values', queryset=AttributeValue.objects.select_related('attribute'))
-        )
+        ).order_by('-created_at')
 
         if query := request.query_params.get('q'):
             queryset = queryset.filter(
                 Q(name__icontains=query) | Q(description__icontains=query) | 
                 Q(brand__name__icontains=query) | Q(category__name__icontains=query)
             )
-        if category_id := self.request.query_params.get('category'):
-            queryset = queryset.filter(category__id=category_id)
-        if brand_id := self.request.query_params.get('brand'):
-            queryset = queryset.filter(brand__id=brand_id)
-        if attribute_value_ids := self.request.query_params.get('attribute_value_ids'):
+        if category_id := request.query_params.get('category'):
+            try:
+                queryset = queryset.filter(category__id=int(category_id))
+            except (ValueError, TypeError):
+                logger.warning(f"Invalid category_id: {category_id}")
+                return Response({
+                    'next': None,
+                    'previous': None,
+                    'results': []
+                })
+        if brand_id := request.query_params.get('brand'):
+            try:
+                queryset = queryset.filter(brand__id=int(brand_id))
+            except (ValueError, TypeError):
+                logger.warning(f"Invalid brand_id: {brand_id}")
+                return Response({
+                    'next': None,
+                    'previous': None,
+                    'results': []
+                })
+        if attribute_value_ids := request.query_params.get('attribute_value_ids'):
             try:
                 attr_ids = [int(id) for id in attribute_value_ids.split(',')]
                 for attr_id in attr_ids:
                     queryset = queryset.filter(attribute_values__id=attr_id)
-            except (ValueError, TypeError):
-                queryset = queryset.none()
+            except (ValueError, TypeError) as e:
+                logger.warning(f"Invalid attribute_value_ids: {attribute_value_ids}, error: {str(e)}")
+                return Response({
+                    'next': None,
+                    'previous': None,
+                    'results': []
+                })
+
+        logger.info(f"Public list queryset type before pagination: {type(queryset)}")
+        page = self.paginate_queryset(queryset)
+        logger.info(f"Public list page type after pagination: {type(page)}")
+        if page is not None:
+            serializer = ProductListSerializer(page, many=True, context={'request': request})
+            return self.get_paginated_response(serializer.data)
 
         serializer = ProductListSerializer(queryset, many=True, context={'request': request})
-        return Response(serializer.data)
+        return Response({
+            'next': None,
+            'previous': None,
+            'results': serializer.data
+        })
 
     @action(detail=False, url_path='category/(?P<category_id>[^/.]+)', 
             permission_classes=[permissions.AllowAny])
     def by_category(self, request, category_id=None):
-        category = get_object_or_404(Category, id=category_id, is_active=True)
-        products = Product.objects.filter(
+        try:
+            category = Category.objects.get(id=category_id, is_active=True)
+        except (Category.DoesNotExist, ValueError):
+            return Response({
+                'next': None,
+                'previous': None,
+                'results': []
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        queryset = Product.objects.filter(
             category=category, is_active=True
         ).select_related(
             'brand', 'category', 'owner'
@@ -260,17 +319,27 @@ class ProductViewSet(viewsets.ModelViewSet):
             Prefetch('images', queryset=ProductImage.objects.order_by('-is_primary'))
         ).order_by('-created_at')
 
-        serializer = ProductListSerializer(products, many=True, context={'request': request})
+        logger.info(f"By category queryset type: {type(queryset)}")
+        page = self.paginate_queryset(queryset)
+        logger.info(f"By category page type: {type(page)}")
+        if page is not None:
+            serializer = ProductListSerializer(page, many=True, context={'request': request})
+            return self.get_paginated_response({
+                'category': CategorySerializer(category, context={'request': request}).data,
+                'products': serializer.data
+            })
+
+        serializer = ProductListSerializer(queryset, many=True, context={'request': request})
         return Response({
             'category': CategorySerializer(category, context={'request': request}).data,
             'products': serializer.data
         })
-    
+
     @action(detail=True, methods=['get'], permission_classes=[permissions.AllowAny])
     def public_detail(self, request, pk=None):
         try:
             pk = int(pk)
-        except (TypeError, ValueError):
+        except (ValueError, TypeError):
             return Response(
                 {"detail": "Invalid product ID format."},
                 status=status.HTTP_400_BAD_REQUEST
@@ -306,3 +375,12 @@ class ProductImageViewSet(viewsets.ModelViewSet):
             owner=self.request.user
         )
         serializer.save(product=product)
+
+
+class WhatsAppClickView(APIView):
+    def post(self, request):
+        serializer = WhatsAppClickSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'status': 'click recorded'}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

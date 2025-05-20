@@ -12,6 +12,7 @@ class Category(MPTTModel):
     parent = TreeForeignKey('self', on_delete=models.PROTECT, null=True, blank=True, related_name='children')
     is_active = models.BooleanField(default=True)
     
+    
     class MPTTMeta:
         order_insertion_by = ['name']
     
@@ -83,6 +84,7 @@ class Product(models.Model):
             models.Index(fields=['category_id']),
             models.Index(fields=['shop_id']),
             models.Index(fields=['owner_id']),
+            models.Index(fields=['created_at'])
         ]
     
     def get_admin_url(self):
@@ -112,3 +114,19 @@ class ProductImage(models.Model):
         if self.is_primary:
             ProductImage.objects.filter(product=self.product, is_primary=True).update(is_primary=False)
         super().save(*args, **kwargs)
+
+
+class WhatsAppClick(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='whatsapp_clicks')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    clicked_at = models.DateTimeField(auto_now_add=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['product', 'clicked_at']),
+            models.Index(fields=['clicked_at']),
+        ]
+
+    def __str__(self):
+        return f"Click on {self.product.name} at {self.clicked_at}"

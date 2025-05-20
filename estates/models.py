@@ -87,7 +87,7 @@ class Property(models.Model):
             base_slug = slugify(self.title)
             slug = base_slug
             counter = 1
-            while Property.objects.filter(slug=slug).exclude(id=self.id).exists():
+            while Property.objects.filter(slug=slug):
                 slug = f"{base_slug}-{counter}"
                 counter += 1
             self.slug = slug

@@ -11,6 +11,7 @@ import logging
 
 from estates.models import Property, PropertyImage, PropertyType
 from estates.serializers import PropertyImageSerializer, PropertySerializer, PropertyTypeSerializer
+from estates.pagination import InfiniteScrollPagination
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,7 @@ class IsOwnerOrAdmin(permissions.BasePermission):
 class PropertyTypeViewSet(viewsets.ModelViewSet):
     queryset = PropertyType.objects.all()
     serializer_class = PropertyTypeSerializer
+    pagination_class = None
     
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
@@ -36,9 +38,10 @@ class PropertyTypeViewSet(viewsets.ModelViewSet):
 class PropertyViewSet(viewsets.ModelViewSet):
     queryset = Property.objects.all()
     serializer_class = PropertySerializer
+    pagination_class = InfiniteScrollPagination
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = ['is_available', 'property_type', 'video_status']
-    search_fields = ['title', 'location']  # Enable search on title and location
+    search_fields = ['title', 'location']
     
     def get_permissions(self):
         if self.action in ['list', 'retrieve', 'serve_hls_playlist', 'serve_hls_segment']:
@@ -151,6 +154,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
 class PropertyImageViewSet(viewsets.ModelViewSet):
     queryset = PropertyImage.objects.all()
     serializer_class = PropertyImageSerializer
+    pagination_class = InfiniteScrollPagination
     
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:

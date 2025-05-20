@@ -4,6 +4,8 @@ from django.utils import timezone
 from datetime import timedelta
 from phonenumber_field.modelfields import PhoneNumberField
 
+
+
 class Shop(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='shop')
     name = models.CharField(max_length=255)
