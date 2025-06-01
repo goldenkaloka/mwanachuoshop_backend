@@ -53,7 +53,8 @@ class Property(models.Model):
     video_description = models.TextField(blank=True)
     video = models.FileField(
         upload_to="properties/videos/original/",
-        validators=[validate_video_file],
+        validators=[validate_video_file], null=False,
+        blank=False
     )
     thumbnail = models.ImageField(
         upload_to="properties/videos/thumbnails/",

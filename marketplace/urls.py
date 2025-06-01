@@ -19,10 +19,5 @@ urlpatterns = [
         }), 
         name='product-images'
     ),
-    # Add these if you want explicit URLs
-    path('products/public/', ProductViewSet.as_view({'get': 'public_list'}), name='product-public-list'),
-    path('products/category/<int:category_id>/', ProductViewSet.as_view({'get': 'by_category'}), name='product-by-category'),
-    path('products/<int:pk>/public/', ProductViewSet.as_view({'get': 'public_detail'}), name='product-public-detail'),
     path('whatsapp-click/', WhatsAppClickView.as_view(), name='whatsapp-click'),
-    
 ]

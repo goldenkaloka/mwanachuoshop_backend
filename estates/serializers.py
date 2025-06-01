@@ -53,13 +53,14 @@ class PropertySerializer(serializers.ModelSerializer):
     )
     images = PropertyImageSerializer(many=True, read_only=True)
     hls_playlist_url = serializers.SerializerMethodField()
+    thumbnail = serializers.SerializerMethodField()
 
     # Explicitly define user-filled fields
     title = serializers.CharField(max_length=100, required=True)
     features = serializers.CharField(required=True)
     location = serializers.CharField(max_length=100, required=True)
     price = serializers.IntegerField(min_value=1, required=True)
-    video = serializers.FileField(required=True)
+    video = serializers.FileField(required=True, allow_null=False)  # Changed to required
     is_available = serializers.BooleanField(default=True)
     video_name = serializers.CharField(max_length=500, required=False, allow_blank=True)
     video_description = serializers.CharField(required=False, allow_blank=True)
@@ -112,6 +113,13 @@ class PropertySerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(reverse('property-playlist', args=[obj.id]))
         return None
 
+    def get_thumbnail(self, obj):
+        primary_image = obj.images.filter(is_primary=True).first()
+        if primary_image and primary_image.image:
+            request = self.context.get('request')
+            return request.build_absolute_uri(primary_image.image.url) if request else primary_image.image.url
+        return None
+
     def to_representation(self, instance):
         representation = super().to_representation(instance)
         if self.context.get('request') and self.context['request'].query_params.get('exclude_images', 'false') == 'true':
@@ -121,6 +129,6 @@ class PropertySerializer(serializers.ModelSerializer):
     def validate(self, data):
         request = self.context.get('request')
         if request and request.user.is_authenticated:
-            if Property.objects.filter(owner=request.user, title=data['title']).exists():
+            if not self.instance and Property.objects.filter(owner=request.user, title=data['title']).exists():
                 raise serializers.ValidationError({"title": "A property with this title already exists for this user."})
         return data

@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from .views import ShopViewSet, ShopMediaViewSet, PromotionViewSet, EventViewSet, ServicesViewSet, UserOfferViewSet, SubscriptionViewSet
 
 router = DefaultRouter()
-router.register(r'shops', ShopViewSet, basename='shops')
+router.register(r'', ShopViewSet, basename='shops')  # Changed from 'shops' to ''
 router.register(r'shop-media', ShopMediaViewSet, basename='shop-media')
 router.register(r'promotions', PromotionViewSet, basename='promotions')
 router.register(r'events', EventViewSet, basename='events')

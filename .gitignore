@@ -1,81 +1,63 @@
-# Django/Python
-*.pyc
+# Virtual environment
+golden/
+
+# Python cache files
 __pycache__/
-*.pyo
-*.pyd
-.Python
-*.egg-info/
-*.egg
+*.py[cod]
+*$py.class
+
+# Django specific
 *.sqlite3
 db.sqlite3
-.env
-.env.*
 *.log
 *.pot
-*.mo
-*.po~
+*.pyc
 
-# Virtual Environment
-golden/
-golden/*
-!golden/.gitkeep  # Optional: Keep empty virtualenv folder structure if needed
+# VS Code and IDEs
+.vscode/
+.idea/
 
-# Media Files
-media/
-media/*
-!media/.gitkeep  # Optional: Keep empty media folder structure
-# Allow specific placeholder files if needed (uncomment if applicable)
-# !media/placeholder.jpg
+# OS files
+.DS_Store
+Thumbs.db
 
-# Static Files (collected by Django)
+# Env files
+.env
+*.env
+
+# Static and media files (user uploads, auto-generated)
 staticfiles/
-static_root/
+media/
+media/hls/
+media/properties/videos/original/
+sample_media/
+sample_media/videos/
 
-# Django Migrations (optional, only if you don't want to track migrations)
-# */migrations/*
-# !*/migrations/__init__.py
+# Ignore CV2 binaries and large dependencies
+golden/Lib/site-packages/cv2/
+*.pyd
+*.dll
 
-
-# Git LFS (if used for large files)
-# Uncomment if you set up Git LFS for videos/images
+# Ignore video/audio files globally
 *.mp4
+*.ts
 *.mov
 *.avi
 *.mkv
+*.flv
 *.webm
-*.jpg
-*.png
-*.jpeg
+*.ogg
+*.wav
+*.aac
 
-# OS-Specific Files
-.DS_Store
-Thumbs.db
-*.swp
-*~
+# Node (if you're using npm for frontend)
+node_modules/
 
-# IDE/Editor Files
-.vscode/
-.idea/
-*.sublime-project
-*.sublime-workspace
-
-# Testing/Coverage
-.coverage
-.coverage.*
-coverage.xml
-*.cover
+# Compiled files and coverage
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+coverage/
 htmlcov/
-.tox/
-.pytest_cache/
-.cache/
-
-# Build Tools
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Other
-*.bak
-*.swp
-*.swo
-*.tmp
-*.temp

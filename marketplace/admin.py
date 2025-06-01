@@ -1,103 +1,74 @@
-from mptt.admin import MPTTModelAdmin
 from django.contrib import admin
-from django.utils.html import format_html
-from .models import *
+from django import forms
+from .models import Category, Brand, Attribute, AttributeValue, Product, ProductImage, WhatsAppClick
 
-@admin.register(Category)
-class CategoryAdmin(MPTTModelAdmin):
-    list_display = ('name', 'parent', 'is_active')
-    list_filter = ('is_active',)
-    search_fields = ('name',)
-    mptt_level_indent = 20
+# Custom form for Product to validate attribute_values
+class ProductAdminForm(forms.ModelForm):
+    class Meta:
+        model = Product
+        fields = '__all__'
 
-class AttributeValueInline(admin.TabularInline):
-    model = AttributeValue
-    extra = 1
+    def clean(self):
+        cleaned_data = super().clean()
+        category = cleaned_data.get('category')
+        attribute_values = cleaned_data.get('attribute_values')
+        if category and attribute_values:
+            for attr_value in attribute_values:
+                if attr_value.category != category:
+                    raise forms.ValidationError(
+                        f"Attribute value '{attr_value}' does not belong to category '{category}'."
+                    )
+        return cleaned_data
 
-@admin.register(Attribute)
-class AttributeAdmin(admin.ModelAdmin):
-    list_display = ('name', 'values_count')
-    search_fields = ('name',)
-    inlines = [AttributeValueInline]
-    
-    def values_count(self, obj):
-        return obj.values.count()
-    values_count.short_description = 'Values Count'
-
-@admin.register(Brand)
-class BrandAdmin(admin.ModelAdmin):
-    list_display = ('name', 'category', 'logo_preview')
-    list_filter = ('category',)
-    search_fields = ('name', 'category__name')
-    
-    def logo_preview(self, obj):
-        if obj.logo:
-            return format_html('<img src="{}" style="max-height: 50px; max-width: 50px;" />', obj.logo.url)
-        return None
-    logo_preview.short_description = 'Logo Preview'
-
+# Inline for ProductImage
 class ProductImageInline(admin.TabularInline):
     model = ProductImage
     extra = 1
-    readonly_fields = ('image_preview',)
-    
-    def image_preview(self, obj):
-        if obj.image:
-            return format_html('<img src="{}" style="max-height: 50px; max-width: 50px;" />', obj.image.url)
-        return None
-    image_preview.short_description = 'Preview'
+    fields = ('image', 'is_primary')
+
+# Simplified admin classes
+@admin.register(Category)
+class CategoryAdmin(admin.ModelAdmin):
+    list_display = ('name', 'parent', 'is_active')
+    search_fields = ('name',)
+
+@admin.register(Brand)
+class BrandAdmin(admin.ModelAdmin):
+    list_display = ('name', 'category')
+    search_fields = ('name',)
+
+@admin.register(Attribute)
+class AttributeAdmin(admin.ModelAdmin):
+    list_display = ('name',)
+    search_fields = ('name',)
+
+@admin.register(AttributeValue)
+class AttributeValueAdmin(admin.ModelAdmin):
+    list_display = ('attribute', 'value', 'category')
+    list_filter = ('attribute', 'category')
+    search_fields = ('value',)
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ('name', 'price', 'category', 'brand', 'owner', 'is_active', 'created_at')
-    list_filter = ('is_active', 'category', 'brand', 'created_at')
-    search_fields = ('name', 'description', 'brand__name')
-    readonly_fields = ('created_at', 'updated_at', 'attribute_values_list')
-    filter_horizontal = ('attribute_values',)
+    form = ProductAdminForm
+    list_display = ('name', 'brand', 'category', 'price', 'is_active')
+    list_filter = ('brand', 'category', 'is_active')
+    search_fields = ('name',)
     inlines = [ProductImageInline]
-    actions = ['activate_products', 'deactivate_products']
-    
-    fieldsets = (
-        (None, {
-            'fields': ('name', 'description', 'is_active')
-        }),
-        ('Pricing & Inventory', {
-            'fields': ('price',)
-        }),
-        ('Relationships', {
-            'fields': ('owner', 'shop', 'category', 'brand')
-        }),
-        ('Attributes', {
-            'fields': ('attribute_values', 'attribute_values_list')
-        }),
-        ('Timestamps', {
-            'fields': ('created_at', 'updated_at')
-        }),
-    )
-    
-    def attribute_values_list(self, obj):
-        return ", ".join([str(av) for av in obj.attribute_values.all()])
-    attribute_values_list.short_description = 'Current Attributes'
-    
-    @admin.action(description='Activate selected products')
-    def activate_products(self, request, queryset):
-        updated = queryset.update(is_active=True)
-        self.message_user(request, f'{updated} products activated')
-    
-    @admin.action(description='Deactivate selected products')
-    def deactivate_products(self, request, queryset):
-        updated = queryset.update(is_active=False)
-        self.message_user(request, f'{updated} products deactivated')
+    filter_horizontal = ('attribute_values',)
+
+    def save_model(self, request, obj, form, change):
+        # Save Product first to generate an ID
+        obj.save()
+        super().save_model(request, obj, form, change)
 
 @admin.register(ProductImage)
 class ProductImageAdmin(admin.ModelAdmin):
-    list_display = ('product', 'image_preview', 'is_primary')
-    list_filter = ('is_primary', 'product__category')
+    list_display = ('product', 'is_primary')
     search_fields = ('product__name',)
-    readonly_fields = ('image_preview',)
-    
-    def image_preview(self, obj):
-        if obj.image:
-            return format_html('<img src="{}" style="max-height: 100px; max-width: 100px;" />', obj.image.url)
-        return None
-    image_preview.short_description = 'Preview'
+
+@admin.register(WhatsAppClick)
+class WhatsAppClickAdmin(admin.ModelAdmin):
+    list_display = ('product', 'clicked_at')
+    list_filter = ('clicked_at',)
+    search_fields = ('product__name',)

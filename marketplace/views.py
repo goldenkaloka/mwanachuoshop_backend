@@ -3,13 +3,13 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
-from django.db.models import Prefetch, Q
+from django.db.models import Prefetch, Q, Count
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from .models import Category, Brand, Attribute, AttributeValue, Product, ProductImage
 from .serializers import (
     CategorySerializer, BrandSerializer, AttributeSerializer,
-    AttributeValueSerializer, ProductDetailSerializer, 
+    AttributeValueSerializer, ProductDetailSerializer,
     ProductListSerializer, ProductSerializer, ProductImageSerializer, WhatsAppClickSerializer
 )
 from .permissions import IsAdminOrReadOnly, IsOwnerOrReadOnly, IsProductOwnerOrReadOnly
@@ -40,12 +40,14 @@ class BrandViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        category_id = self.request.query_params.get('category_id')
-        if category_id:
+        category_ids = self.request.query_params.get('category_id')
+        if category_ids:
             try:
-                category_id = int(category_id)
-                queryset = queryset.filter(category_id=category_id)
-            except (ValueError, TypeError):
+                # Handle comma-separated category IDs
+                category_ids = [int(cid) for cid in category_ids.split(',') if cid]
+                queryset = queryset.filter(category_id__in=category_ids)
+            except (ValueError, TypeError) as e:
+                logger.warning(f"Invalid category IDs: {category_ids}, error: {str(e)}")
                 queryset = queryset.none()
         return queryset
 
@@ -88,7 +90,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         queryset = Product.objects.filter(
             owner=self.request.user
         ).select_related(
-            'brand', 'category', 'owner'
+            'brand', 'category', 'owner', 'shop'
         ).prefetch_related(
             'images',
             Prefetch('attribute_values', queryset=AttributeValue.objects.select_related('attribute'))
@@ -108,11 +110,17 @@ class ProductViewSet(viewsets.ModelViewSet):
         return queryset
 
     def perform_create(self, serializer):
+        """
+        Create a product, associating it with the user's shop if one exists.
+        Set is_active=True if the user has a shop, bypassing payment/activation.
+        """
         user = self.request.user
         shop = Shop.objects.filter(user=user).first()
-        serializer.save(owner=user, shop=shop, is_active=False)
+        is_active = True if shop else False  # Set is_active=True if shop exists
+        serializer.save(owner=user, shop=shop, is_active=is_active)
+        logger.info(f"Product created for user {user.username}, shop: {shop.id if shop else None}, is_active: {is_active}")
 
-    @action(detail=False, methods=['post'], url_path='confirm-product-creation', 
+    @action(detail=False, methods=['post'], url_path='confirm-product-creation',
             permission_classes=[permissions.IsAuthenticated])
     def confirm_product_creation(self, request):
         """Activate a product using shop subscription, free offer, or payment"""
@@ -138,12 +146,11 @@ class ProductViewSet(viewsets.ModelViewSet):
                 )
 
             user = request.user
-            shop = Shop.objects.filter(user=user).first()
+            shop = product.shop  # Use product's associated shop
             offer = UserOffer.objects.filter(user=user).first()
 
-            # Free activation paths
             if shop and shop.is_subscription_active():
-                logger.info(f"User {user.username} activating product {product_id} via shop subscription.")
+                logger.info(f"Activating product {product_id} via active shop subscription {shop.id}.")
                 product.is_active = True
                 product.save()
                 return Response(
@@ -181,7 +188,6 @@ class ProductViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_402_PAYMENT_REQUIRED
                 )
 
-            # Verify payment
             try:
                 payment = Payment.objects.select_for_update().get(
                     transaction_id=transaction_id,
@@ -213,68 +219,72 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, permission_classes=[permissions.AllowAny])
     def recent(self, request):
+        logger.info(f"Recent list query params: {request.query_params}")
         queryset = Product.objects.filter(
             category__is_active=True, is_active=True
         ).select_related(
-            'brand', 'category', 'owner'
+            'brand', 'category', 'owner', 'shop'
         ).prefetch_related(
-            Prefetch('images', queryset=ProductImage.objects.order_by('-is_primary'))
-        ).order_by('-created_at')
-
-        logger.info(f"Recent queryset type: {type(queryset)}")
-        page = self.paginate_queryset(queryset)
-        logger.info(f"Recent page type: {type(page)}")
-        if page is not None:
-            serializer = ProductListSerializer(page, many=True, context={'request': request})
-            return self.get_paginated_response(serializer.data)
-
-        serializer = ProductListSerializer(queryset, many=True, context={'request': request})
-        return Response({
-            'next': None,
-            'previous': None,
-            'results': serializer.data
-        })
-
-    @action(detail=False, permission_classes=[permissions.AllowAny])
-    def public_list(self, request):
-        logger.info(f"Public list query params: {request.query_params}")
-        queryset = Product.objects.filter(
-            category__is_active=True, is_active=True
-        ).select_related(
-            'brand', 'category', 'owner'
-        ).prefetch_related(
-            'images',
+            Prefetch('images', queryset=ProductImage.objects.order_by('-is_primary')),
             Prefetch('attribute_values', queryset=AttributeValue.objects.select_related('attribute'))
-        ).order_by('-created_at')
+        )
 
+        # Search query
         if query := request.query_params.get('q'):
             queryset = queryset.filter(
-                Q(name__icontains=query) | Q(description__icontains=query) | 
-                Q(brand__name__icontains=query) | Q(category__name__icontains=query)
+                Q(name__icontains=query) |
+                Q(description__icontains=query) |
+                Q(brand__name__icontains=query) |
+                Q(category__name__icontains=query)
             )
-        if category_id := request.query_params.get('category'):
+
+        # Category filter (comma-separated IDs)
+        if category_ids := self.request.query_params.get('category'):
             try:
-                queryset = queryset.filter(category__id=int(category_id))
-            except (ValueError, TypeError):
-                logger.warning(f"Invalid category_id: {category_id}")
+                category_ids = [int(cid) for cid in category_ids.split(',') if cid]
+                queryset = queryset.filter(category__id__in=category_ids)
+            except (ValueError, TypeError) as e:
+                logger.warning(f"Invalid category IDs: {category_ids}, error: {str(e)}")
                 return Response({
                     'next': None,
                     'previous': None,
                     'results': []
                 })
-        if brand_id := request.query_params.get('brand'):
+
+        # Brand filter (comma-separated IDs)
+        if brand_ids := self.request.query_params.get('brand'):
             try:
-                queryset = queryset.filter(brand__id=int(brand_id))
-            except (ValueError, TypeError):
-                logger.warning(f"Invalid brand_id: {brand_id}")
+                brand_ids = [int(bid) for bid in brand_ids.split(',') if bid]
+                queryset = queryset.filter(brand__id__in=brand_ids)
+            except (ValueError, TypeError) as e:
+                logger.warning(f"Invalid brand IDs: {brand_ids}, error: {str(e)}")
                 return Response({
                     'next': None,
                     'previous': None,
                     'results': []
                 })
-        if attribute_value_ids := request.query_params.get('attribute_value_ids'):
+
+        # Price range filter
+        if min_price := self.request.query_params.get('min_price'):
             try:
-                attr_ids = [int(id) for id in attribute_value_ids.split(',')]
+                min_price = Decimal(min_price)
+                queryset = queryset.filter(price__gte=min_price)
+            except (ValueError, TypeError) as e:
+                logger.warning(f"Invalid min_price: {min_price}, error: {str(e)}")
+                # Ignore invalid min_price
+
+        if max_price := self.request.query_params.get('max_price'):
+            try:
+                max_price = Decimal(max_price)
+                queryset = queryset.filter(price__lte=max_price)
+            except (ValueError, TypeError) as e:
+                logger.warning(f"Invalid max_price: {max_price}, error: {str(e)}")
+                # Ignore invalid max_price
+
+        # Attribute values filter
+        if attribute_value_ids := self.request.query_params.get('attribute_value_ids'):
+            try:
+                attr_ids = [int(aid) for aid in attribute_value_ids.split(',')]
                 for attr_id in attr_ids:
                     queryset = queryset.filter(attribute_values__id=attr_id)
             except (ValueError, TypeError) as e:
@@ -285,9 +295,22 @@ class ProductViewSet(viewsets.ModelViewSet):
                     'results': []
                 })
 
-        logger.info(f"Public list queryset type before pagination: {type(queryset)}")
+        # Ordering
+        ordering = self.request.query_params.get('ordering', '-created_at')
+        if ordering == 'price_low':
+            queryset = queryset.order_by('price')
+        elif ordering == 'price_high':
+            queryset = queryset.order_by('-price')
+        elif ordering == 'popular':
+            queryset = queryset.annotate(
+                click_count=Count('whatsapp_clicks')
+            ).order_by('-click_count', '-created_at')
+        else:
+            queryset = queryset.order_by('-created_at')
+
+        logger.info(f"Recent queryset type before pagination: {type(queryset)}")
         page = self.paginate_queryset(queryset)
-        logger.info(f"Public list page type after pagination: {type(page)}")
+        logger.info(f"Recent page type after pagination: {type(page)}")
         if page is not None:
             serializer = ProductListSerializer(page, many=True, context={'request': request})
             return self.get_paginated_response(serializer.data)
@@ -299,7 +322,7 @@ class ProductViewSet(viewsets.ModelViewSet):
             'results': serializer.data
         })
 
-    @action(detail=False, url_path='category/(?P<category_id>[^/.]+)', 
+    @action(detail=False, url_path='category/(?P<category_id>[^/.]+)',
             permission_classes=[permissions.AllowAny])
     def by_category(self, request, category_id=None):
         try:
@@ -314,7 +337,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         queryset = Product.objects.filter(
             category=category, is_active=True
         ).select_related(
-            'brand', 'category', 'owner'
+            'brand', 'category', 'owner', 'shop'
         ).prefetch_related(
             Prefetch('images', queryset=ProductImage.objects.order_by('-is_primary'))
         ).order_by('-created_at')
@@ -347,10 +370,10 @@ class ProductViewSet(viewsets.ModelViewSet):
 
         product = get_object_or_404(
             Product.objects.filter(category__is_active=True, is_active=True)
-                .select_related('brand', 'category', 'owner')
+                .select_related('brand', 'category', 'owner', 'shop')
                 .prefetch_related(
                     'images',
-                    Prefetch('attribute_values', 
+                    Prefetch('attribute_values',
                              queryset=AttributeValue.objects.select_related('attribute'))
                 ),
             id=pk
@@ -370,12 +393,11 @@ class ProductImageViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         product = get_object_or_404(
-            Product, 
+            Product,
             id=self.kwargs['product_pk'],
             owner=self.request.user
         )
         serializer.save(product=product)
-
 
 class WhatsAppClickView(APIView):
     def post(self, request):

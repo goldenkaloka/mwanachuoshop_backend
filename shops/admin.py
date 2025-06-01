@@ -12,7 +12,7 @@ class ShopAdmin(admin.ModelAdmin):
 
 @admin.register(ShopMedia)
 class ShopMediaAdmin(admin.ModelAdmin):
-    list_display = ('shop', 'is_primary', 'image', 'video')
+    list_display = ('shop', 'is_primary', 'image')
     list_filter = ('is_primary',)
     search_fields = ('shop__name',)
     raw_id_fields = ('shop',)

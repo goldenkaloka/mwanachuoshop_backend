@@ -36,7 +36,6 @@ INSTALLED_APPS = [
     'rest_framework',
     'django_filters',
     'rest_framework.authtoken',
-    'rest_framework_simplejwt.token_blacklist',
     'dj_rest_auth',
     'dj_rest_auth.registration',
     'allauth',
@@ -118,7 +117,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Africa/Dar_es_Salaam'
 
 USE_I18N = True
 
@@ -174,9 +173,10 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
-    'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
-    ),
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',  # Allow all by default
+    ],
+
      'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
@@ -185,9 +185,6 @@ REST_FRAMEWORK = {
 
 REST_AUTH = {
     'USE_JWT': True,
-    'JWT_AUTH_COOKIE': 'access',
-    'JWT_AUTH_REFRESH_COOKIE': 'refresh',
-    'JWT_AUTH_HTTPONLY': False,
     'OLD_PASSWORD_FIELD_ENABLED': True,
     'LOGOUT_ON_PASSWORD_CHANGE': True,
     'REGISTER_SERIALIZER': 'users.serializers.CustomRegisterSerializer',
@@ -197,7 +194,7 @@ REST_AUTH = {
 
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=4),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
@@ -219,37 +216,18 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 
-# AzamPay Configuration
-AZAMPAY_CONFIG = {
-    'APP_NAME': 'mwanachuoshop',
-    'CLIENT_ID': '0fbddf98-36f9-4051-b5f5-10ebd0301cb7',
-    'CLIENT_SECRET': 'X9b04f+B7nIQgK7+Q/9+cHYyljhiYYEVg78dzsBJ58028354m/klOw2Y80j4N5qNX0Tkwa07UzS0+fdagpHYc+o9ZCY9CvPazzEpgKUQFn69fjJKm4BEUX5Nzr/EiMxwUpzGdFvuTdeBmOWN4OoJMalXQ9R/UuR60sxhQNRKys5poU/zmGlfMRTHFg62yiCwFJzyhLV/HycA/YOV/G5AwDPUPJJIsQBl31RCmzydebeuCeZ2KmdzLTKQqKaAU1aUkE98CEFfdZlcsHa9U2z+yUSEtE8S94UM3kbytImKMzECb+b0xV5FWlJbbgUIOVjvreFvKL4k3v5gacCkcaZAvy5Z9OJhKBLg3uq54/PrIi339g0TeerLrYIwvCwrdRhcUdOuZ7MqRaN3FgO+Kw84iIpzpoDH5jwaFaLafcoBVJqbO5q1gZwj0oAeIh93ZsY6yGzbqY4I1o9EZyHIOc3f2vtq4Ozms8oAw2h5kYfjo4tWxyIWcaTQBJNY8QsGof8Qyp41mKRo0YFWS2jy4DQ0r69ihAAY4tEeXe1IcLenc6g2o67yY7vbNzggS5ym4EspsZfjbpIjx0D0Q6OojNKkb26LxWMojpBXlh1W3h/WHsBTMfIyizbFOOh7UVnyKHxFZoOAMDg86NXnCB4w/btGZvW7NW+XQkR+XmidWPA97OI=',
-    'SANDBOX': True,  
+ZENOPAY_CLIENT = {
+    'ACCOUNT_ID'   : 'your_account_id',        
+    'API_KEY'      : 'your_api_key',             
+    'SECRET_KEY'   : 'your_secret_key',           
+    'WEBHOOK_URL'  : 'https://example.com/zenopay/webhook/',
+    'REDIRECT_URL' : 'https://example.com/zenopay/return/',
+    'API_BASE_URL' : 'https://api.zeno.africa',
+    'DEBUG'        : True,  #
 }
 
-# AZAMPAY_CLIENT = Azampay(
-#     app_name=AZAMPAY_CONFIG['APP_NAME'],
-#     client_id=AZAMPAY_CONFIG['CLIENT_ID'],
-#     client_secret=AZAMPAY_CONFIG['CLIENT_SECRET'],
-#     sandbox=AZAMPAY_CONFIG['SANDBOX'],
-# )
 
-# Logging configuration
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-        },
-    },
-    'loggers': {
-        'payments.views': {
-            'handlers': ['console'],
-            'level': 'INFO',
-        },
-    },
-}
+
 
 
 # Celery Configuration
@@ -282,24 +260,123 @@ JAZZMIN_SETTINGS = {
     "site_title": "Mwanachuoshop",
     "site_header": "Mwanachuoshop admin",
     "site_brand": "Mwanachuoshop",
+    "site_logo": None,
+    "login_logo": None,
+    "login_logo_dark": None,
+    "site_logo_classes": "img-circle",
+    "site_icon": None,
     "welcome_sign": "Welcome to Mwanachuoshop admin panel",
+    "copyright": "Mwanachuoshop Ltd",
+    "search_model": ["products.Product", "auth.User"],
     
     # UI Tweaks
-    "show_ui_builder": True,  # Enable UI configurator (for live customization)
-    "navigation_expanded": True,  # Expand sidebar by default
+    "show_ui_builder": True,
+    "navigation_expanded": True,
+    "hide_apps": [],
+    "hide_models": [],
+    "order_with_respect_to": [
+        "products",
+        "products.product",
+        "products.category",
+        "products.brand",
+        "products.attribute",
+        "auth",
+    ],
     
     # Custom icons
     "icons": {
         "auth.user": "fas fa-user",
         "auth.Group": "fas fa-users",
-        "payments.Payment": "fas fa-credit-card",
         "products.Product": "fas fa-box",
         "products.Category": "fas fa-tags",
+        "products.Brand": "fas fa-copyright",
+        "products.Attribute": "fas fa-list",
+        "products.AttributeValue": "fas fa-list-alt",
+        "products.ProductImage": "fas fa-image",
+        "products.WhatsAppClick": "fas fa-whatsapp",
     },
     
+    # Top menu configuration
+    "topmenu_links": [
+        {"name": "Home", "url": "admin:index", "permissions": ["auth.view_user"]},
+        {"name": "Support", "url": "https://github.com/farridav/django-jazzmin/issues", "new_window": True},
+        {"model": "auth.User"},
+        {"app": "products"},
+    ],
+    
+    # Custom links
+    "usermenu_links": [
+        {"name": "Support", "url": "https://github.com/farridav/django-jazzmin/issues", "new_window": True},
+        {"model": "auth.user"}
+    ],
+    
     # Theme options
-    "theme": "dark",  # dark/light
+    "theme": "default",
+    "dark_mode_theme": None,
+    "button_classes": {
+        "primary": "btn-primary",
+        "secondary": "btn-secondary",
+        "info": "btn-info",
+        "warning": "btn-warning",
+        "danger": "btn-danger",
+        "success": "btn-success"
+    },
+    
+    # Related modal
+    "related_modal_active": False,
+    
+    # Custom CSS/JS
+    "custom_css": None,
+    "custom_js": None,
+    
+    # Show sidebar
+    "show_sidebar": True,
+    
+    # Navigation menu
+    "navigation_expanded": True,
+    
+    # Misc
+    "changeform_format": "horizontal_tabs",
+    "changeform_format_overrides": {
+        "auth.user": "collapsible",
+        "auth.group": "vertical_tabs"
+    },
+    "language_chooser": False,
 }
+
+JAZZMIN_UI_TWEAKS = {
+    "navbar_small_text": False,
+    "footer_small_text": False,
+    "body_small_text": False,
+    "brand_small_text": False,
+    "brand_colour": "navbar-primary",
+    "accent": "accent-primary",
+    "navbar": "navbar-white navbar-light",
+    "no_navbar_border": False,
+    "navbar_fixed": True,
+    "layout_boxed": False,
+    "footer_fixed": False,
+    "sidebar_fixed": True,
+    "sidebar": "sidebar-dark-primary",
+    "sidebar_nav_small_text": False,
+    "sidebar_disable_expand": False,
+    "sidebar_nav_child_indent": False,
+    "sidebar_nav_compact_style": False,
+    "sidebar_nav_legacy_style": False,
+    "sidebar_nav_flat_style": False,
+    "theme": "default",
+    "dark_mode_theme": None,
+    "button_classes": {
+        "primary": "btn-outline-primary",
+        "secondary": "btn-outline-secondary",
+        "info": "btn-outline-info",
+        "warning": "btn-outline-warning",
+        "danger": "btn-outline-danger",
+        "success": "btn-outline-success"
+    },
+    "actions_sticky_top": False
+}
+   
 
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Mwanachuoshop API',
@@ -308,3 +385,4 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,
     # OTHER SETTINGS
 }
+

@@ -3692,10 +3692,6 @@ components:
           type: string
           format: uri
           nullable: true
-        video:
-          type: string
-          format: uri
-          nullable: true
         is_primary:
           type: boolean
     Payment:
@@ -4217,10 +4213,6 @@ components:
         shop:
           type: integer
         image:
-          type: string
-          format: uri
-          nullable: true
-        video:
           type: string
           format: uri
           nullable: true
