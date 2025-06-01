@@ -52,6 +52,10 @@ golden/Lib/site-packages/cv2/
 
 # Node (if you're using npm for frontend)
 node_modules/
+media/
+sample_media/videos/
+
+
 
 # Compiled files and coverage
 *.so
