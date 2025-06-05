@@ -1,4 +1,3 @@
-# shops/models.py
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
@@ -6,7 +5,6 @@ from datetime import timedelta
 from phonenumber_field.modelfields import PhoneNumberField
 from django.db import transaction
 import logging
-
 from marketplace.models import Product
 
 logger = logging.getLogger(__name__)
@@ -23,7 +21,13 @@ class Shop(models.Model):
     university_partner = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=False)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['user']),
+            models.Index(fields=['is_active']),
+        ]
 
     def is_subscription_active(self):
         subscription = getattr(self, 'subscription', None)
@@ -52,6 +56,8 @@ class Promotion(models.Model):
 
     @property
     def is_active(self):
+        if self.start_date is None or self.end_date is None:
+            return False
         return (self.start_date <= timezone.now() <= self.end_date and
                 self.shop.is_subscription_active())
 
@@ -70,6 +76,8 @@ class Event(models.Model):
 
     @property
     def is_active(self):
+        if self.start_time is None or self.end_time is None:
+            return False
         return (self.start_time <= timezone.now() <= self.end_time and
                 self.shop.is_subscription_active())
 
@@ -93,33 +101,29 @@ class Services(models.Model):
 
 class UserOffer(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='offer')
-    free_products_remaining = models.PositiveIntegerField(default=20)
-    free_estates_remaining = models.PositiveIntegerField(default=5)
-    shop_trial_end_date = models.DateTimeField(blank=True, null=True)
+    free_products_remaining = models.PositiveIntegerField(default=0)
+    free_estates_remaining = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
-
-    def is_shop_trial_active(self):
-        if self.shop_trial_end_date:
-            return self.shop_trial_end_date > timezone.now()
-        return False
+    updated_at = models.DateTimeField(auto_now=True)
 
     def consume_free_product(self):
-        if self.free_products_remaining > 0:
-            self.free_products_remaining -= 1
-            self.save()
-            return True
-        return False
+        with transaction.atomic():
+            if self.free_products_remaining > 0:
+                self.free_products_remaining -= 1
+                self.save()
+                return True
+            return False
 
     def consume_free_estate(self):
-        if self.free_estates_remaining > 0:
-            self.free_estates_remaining -= 1
-            self.save()
-            return True
-        return False
+        with transaction.atomic():
+            if self.free_estates_remaining > 0:
+                self.free_estates_remaining -= 1
+                self.save()
+                return True
+            return False
 
     def __str__(self):
         return f"Offer for {self.user.username}"
-
 
 class Subscription(models.Model):
     class Status(models.TextChoices):
@@ -134,17 +138,26 @@ class Subscription(models.Model):
     end_date = models.DateTimeField()
     is_trial = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['status', 'end_date']),
+            models.Index(fields=['shop']),
+        ]
 
     def is_active(self):
         if self.status == self.Status.ACTIVE and self.end_date < timezone.now():
-            self.status = self.Status.EXPIRED
-            self.save()
-            # Deactivate associated products
-            products_updated = Product.objects.filter(
-                shop=self.shop,
-                is_active=True
-            ).update(is_active=False)
-            logger.info(f"Deactivated {products_updated} products for shop {self.shop.id} due to expired subscription")
+            with transaction.atomic():
+                self.status = self.Status.EXPIRED
+                self.save()
+                self.shop.is_active = False
+                self.shop.save(update_fields=['is_active'])
+                products_updated = Product.objects.filter(
+                    shop=self.shop,
+                    is_active=True
+                ).update(is_active=False)
+                logger.info(f"Deactivated {products_updated} products and shop {self.shop.id} due to expired subscription")
         return self.status == self.Status.ACTIVE and self.end_date > timezone.now()
 
     def extend_subscription(self, months=1):
@@ -154,13 +167,14 @@ class Subscription(models.Model):
             self.end_date += timedelta(days=30 * months)
             self.is_trial = False
             self.status = self.Status.ACTIVE
+            self.shop.is_active = True
+            self.shop.save(update_fields=['is_active'])
             self.save()
-            # Reactivate associated products
             products_updated = Product.objects.filter(
                 shop=self.shop,
                 is_active=False
             ).update(is_active=True)
-            logger.info(f"Reactivated {products_updated} products for shop {self.shop.id} due to subscription extension")
+            logger.info(f"Reactivated {products_updated} products and shop {self.shop.id} due to subscription extension")
 
     def __str__(self):
         return f"Subscription for {self.shop.name} ({self.user.username})"

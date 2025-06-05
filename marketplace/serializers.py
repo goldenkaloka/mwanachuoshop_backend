@@ -3,6 +3,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from .models import Category, Brand, Attribute, AttributeValue, Product, ProductImage, WhatsAppClick
 from shops.models import Shop, UserOffer
+from users.serializers import CustomUserDetailsSerializer  # Import for owner field
 
 User = get_user_model()
 
@@ -46,7 +47,6 @@ class ProductImageSerializer(serializers.ModelSerializer):
 
 class ProductSerializer(serializers.ModelSerializer):
     owner = serializers.HiddenField(default=serializers.CurrentUserDefault())
-
     attribute_value_ids = serializers.PrimaryKeyRelatedField(
         queryset=AttributeValue.objects.all(),
         many=True,
@@ -85,27 +85,25 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def get_payment_amount(self, obj):
         """Calculate payment amount as 0.1% of price, with a minimum of 1.00."""
-        return str(max(
-            Decimal('1.00'),
-            (obj.price * Decimal('0.001')).quantize(Decimal('0.01'))
-        ))
+        try:
+            return str(max(
+                Decimal('1.00'),
+                (obj.price * Decimal('0.001')).quantize(Decimal('0.01'))
+            ))
+        except (TypeError, Decimal.InvalidOperation):
+            return str(Decimal('1.00'))
 
     def to_internal_value(self, data):
-        # Create a mutable copy of the data
         mutable_data = data.copy() if hasattr(data, 'copy') else dict(data)
-
-        # Convert price to Decimal if it exists
         if 'price' in mutable_data:
             price_value = mutable_data['price']
             try:
-                # Handle both string and numeric inputs
                 if isinstance(price_value, (str, float, int)):
                     mutable_data['price'] = Decimal(str(price_value))
                 else:
                     raise serializers.ValidationError({"price": "Invalid price format."})
             except (ValueError, TypeError, Decimal.InvalidOperation):
                 raise serializers.ValidationError({"price": "Invalid price format."})
-
         return super().to_internal_value(mutable_data)
 
     def validate_category(self, value):
@@ -138,11 +136,9 @@ class ProductSerializer(serializers.ModelSerializer):
             'description': "Description is required.",
             'attribute_value_ids': "At least one attribute is required."
         }
-        
         for field, message in required_fields.items():
             if field not in data or not data[field]:
                 errors[field] = message
-                
         if errors:
             raise serializers.ValidationError(errors)
         return data
@@ -199,7 +195,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     price = serializers.FloatField()
     images = ProductImageUrlSerializer(many=True, read_only=True)
     attribute_values = AttributeValueSerializer(many=True, read_only=True)
-    owner = serializers.SerializerMethodField()
+    owner = CustomUserDetailsSerializer(read_only=True)
     condition = serializers.CharField()
 
     class Meta:
@@ -209,17 +205,6 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             'images', 'attribute_values', 'owner', 'created_at',
             'updated_at', 'is_active', 'condition'
         ]
-
-    def get_owner(self, obj):
-        owner = obj.owner
-        profile = owner.profile
-        return {
-            'username': owner.username,
-            'phone': str(owner.phonenumber),
-            'whatsapp': str(profile.whatsapp) if profile and profile.whatsapp else None,
-            'instagram': profile.instagram if profile else None,
-            'tiktok': profile.tiktok if profile else None
-        }
 
 class WhatsAppClickSerializer(serializers.ModelSerializer):
     product_id = serializers.PrimaryKeyRelatedField(

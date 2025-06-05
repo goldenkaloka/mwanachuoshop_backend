@@ -1,9 +1,10 @@
-# shops/signals.py
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.conf import settings
+from django.db import transaction
+from django.core.mail import mail_admins
 from django.utils import timezone
 from datetime import timedelta
-from django.conf import settings
 from .models import UserOffer, Subscription, Shop
 import logging
 
@@ -11,49 +12,57 @@ logger = logging.getLogger(__name__)
 
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
 def create_user_offer(sender, instance, created, **kwargs):
+    """Create a UserOffer for new users with free product and estate quotas."""
     if created:
         try:
-            UserOffer.objects.create(
-                user=instance,
-                free_products_remaining=20,
-                free_estates_remaining=5
-             
-            )
-            logger.info(f"Created UserOffer for user {instance.id}")
+            with transaction.atomic():
+                UserOffer.objects.create(
+                    user=instance,
+                    free_products_remaining=settings.USER_OFFER_DEFAULTS.get('free_products_remaining', 20),
+                    free_estates_remaining=settings.USER_OFFER_DEFAULTS.get('free_estates_remaining', 5)
+                )
+                logger.info(f"Created UserOffer for user {instance.id} (email: {instance.email})")
         except Exception as e:
-            logger.error(f"Failed to create UserOffer for user {instance.id}: {str(e)}")
+            error_msg = f"Failed to create UserOffer for user {instance.id} (email: {instance.email}): {str(e)}"
+            logger.error(error_msg)
+            mail_admins(
+                subject="UserOffer Creation Failure",
+                message=error_msg,
+                fail_silently=True
+            )
 
 @receiver(post_save, sender=Shop)
-def create_shop_subscription(sender, instance, created, **kwargs):
+def create_shop_trial_subscription(sender, instance, created, **kwargs):
+    """Create a free trial subscription for new shops."""
     if created:
         try:
-            try:
-                offer = instance.user.offer
-            except UserOffer.DoesNotExist:
-                offer = UserOffer.objects.create(
-                    user=instance.user,
-                    free_products_remaining=20,
-                    free_estates_remaining=5
-                )
-                logger.info(f"Created UserOffer for user {instance.user.id} for shop {instance.id}")
-            
-            # Set shop_trial_end_date when shop is created
-            trial_end = timezone.now() + timedelta(minutes=3)
-            offer.shop_trial_end_date = trial_end
-            offer.save()
-            logger.info(f"Set shop_trial_end_date to {trial_end} for user {instance.user.id}")
+            with transaction.atomic():
+                trial_days = getattr(settings, 'SHOP_TRIAL_DAYS', 7)
+                trial_end = timezone.now() + timedelta(days=trial_days)
+                if settings.DEBUG and hasattr(settings, 'SHOP_TRIAL_MINUTES'):
+                    trial_end = timezone.now() + timedelta(minutes=settings.SHOP_TRIAL_MINUTES)
 
-            subscription, created = Subscription.objects.get_or_create(
-                shop=instance,
-                defaults={
-                    'user': instance.user,
-                    'end_date': trial_end,
-                    'is_trial': True
-                }
-            )
-            if created:
-                logger.info(f"Created Subscription for shop {instance.id} with end_date {subscription.end_date}")
-            else:
-                logger.info(f"Subscription already exists for shop {instance.id}, end_date {subscription.end_date}")
+                subscription, sub_created = Subscription.objects.get_or_create(
+                    shop=instance,
+                    defaults={
+                        'user': instance.user,
+                        'status': Subscription.Status.ACTIVE,
+                        'start_date': timezone.now(),
+                        'end_date': trial_end,
+                        'is_trial': True
+                    }
+                )
+                if sub_created:
+                    instance.is_active = True
+                    instance.save(update_fields=['is_active'])
+                    logger.info(f"Created trial subscription for shop {instance.id} (user: {instance.user.email}) with end_date {trial_end}")
+                else:
+                    logger.warning(f"Subscription already exists for shop {instance.id}, end_date {subscription.end_date}")
         except Exception as e:
-            logger.error(f"Failed to create Subscription for shop {instance.id}: {str(e)}")
+            error_msg = f"Failed to create trial subscription for shop {instance.id} (user: {instance.user.email}): {str(e)}"
+            logger.error(error_msg)
+            mail_admins(
+                subject="Shop Trial Subscription Creation Failure",
+                message=error_msg,
+                fail_silently=True
+            )

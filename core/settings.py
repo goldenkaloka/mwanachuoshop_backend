@@ -1,3 +1,4 @@
+from decimal import Decimal
 import os
 from pathlib import Path
 from datetime import timedelta
@@ -45,6 +46,7 @@ INSTALLED_APPS = [
     'django_cleanup.apps.CleanupConfig',
     'django_q',
     'drf_spectacular',
+    'django_extensions',
 
 ]
 
@@ -84,14 +86,38 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
+
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'mwanachuoshop',       
+        'USER': 'mwanachuoshop_user',       
+        'PASSWORD': 'U3ZxJIpUDe2EU3ET6irYfi1ujvCnXGMG', 
+        'HOST': 'dpg-d10rs463jp1c739aa60g-a.oregon-postgres.render.com',       
+        'PORT': '5432',                    
     }
 }
 
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+
+# Email configuration for Gmail SMTP
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'mwanachuoshop@gmail.com'  
+EMAIL_HOST_PASSWORD = 'xxxx xxxx xxxx xxxx'  
+DEFAULT_FROM_EMAIL = 'mwanachuoshop@gmail.com'  
+
+
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -216,18 +242,24 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 
-ZENOPAY_CLIENT = {
-    'ACCOUNT_ID'   : 'your_account_id',        
-    'API_KEY'      : 'your_api_key',             
-    'SECRET_KEY'   : 'your_secret_key',           
-    'WEBHOOK_URL'  : 'https://example.com/zenopay/webhook/',
-    'REDIRECT_URL' : 'https://example.com/zenopay/return/',
-    'API_BASE_URL' : 'https://api.zeno.africa',
-    'DEBUG'        : True,  #
-}
+import os
+from zenopay import ZenoPay
+
+# Load ZenoPay credentials securely from environment variables
+ZENOPAY_ACCOUNT_ID = 'your_zenopay_account_id'  # Replace with your actual ZenoPay account ID
+ZENOPAY_API_KEY = 'your_zenopay_api_key'  # Replace with your actual ZenoPay API key
+ZENOPAY_SECRET_KEY = 'your_zenopay_secret_key'  # Replace with your actual ZenoPay secret key
 
 
+ZENOPAY_CLIENT = ZenoPay(account_id=ZENOPAY_ACCOUNT_ID)
+ZENOPAY_CLIENT.api_key = ZENOPAY_API_KEY
+ZENOPAY_CLIENT.secret_key = ZENOPAY_SECRET_KEY
 
+
+# ZenoPay Settings
+ZENOPAY_API_BASE_URL="https://api.zeno.africa"
+ZENOPAY_WEBHOOK_URL="https://master-relevant-flounder.ngrok-free.app/api/payments/zenopay-callback/"
+ZENOPAY_ALLOWED_IPS="203.0.113.1,203.0.113.2"
 
 
 # Celery Configuration
@@ -386,3 +418,13 @@ SPECTACULAR_SETTINGS = {
     # OTHER SETTINGS
 }
 
+
+SHOP_TRIAL_DAYS = 30
+SHOP_TRIAL_MINUTES = 120 
+USER_OFFER_DEFAULTS = {
+    'free_products_remaining': 20,
+    'free_estates_remaining': 5
+}
+PAYMENT_CURRENCY = 'TZS'
+SHOP_SUBSCRIPTION_PRICE = Decimal('5000.00')
+ZENOPAY_ALLOWED_IPS = ['<ZenoPay_IP1>', '<ZenoPay_IP2>']  # Replace with actual IPs

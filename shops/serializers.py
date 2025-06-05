@@ -13,12 +13,10 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at', 'is_active']
 
 class UserOfferSerializer(serializers.ModelSerializer):
-    is_shop_trial_active = serializers.ReadOnlyField()
-
     class Meta:
         model = UserOffer
-        fields = ['id', 'free_products_remaining', 'free_estates_remaining', 'shop_trial_end_date', 'created_at', 'is_shop_trial_active']
-        read_only_fields = ['created_at', 'is_shop_trial_active']
+        fields = ['id', 'free_products_remaining', 'free_estates_remaining', 'created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at']
 
 class ShopMediaSerializer(serializers.ModelSerializer):
     shop = serializers.PrimaryKeyRelatedField(queryset=Shop.objects.all())
@@ -28,8 +26,8 @@ class ShopMediaSerializer(serializers.ModelSerializer):
         image = data.get('image')
         shop = data.get('shop')
         logger.debug(f"Validating ShopMedia: shop={shop.id if shop else None}, image={bool(image)}")
-        if not image:
-            raise serializers.ValidationError({"non_field_errors": "Image must be provided."})
+        if image is None and not ShopMedia.objects.filter(shop=shop).exists():
+            raise serializers.ValidationError({"non_field_errors": "At least one image is required for the shop."})
         return data
 
     class Meta:
@@ -71,12 +69,14 @@ class ShopSerializer(serializers.ModelSerializer):
     media = ShopMediaSerializer(many=True, read_only=True)
     subscription = SubscriptionSerializer(read_only=True)
     is_subscription_active = serializers.ReadOnlyField()
+    image = serializers.ImageField(use_url=True, allow_null=True, required=False)  # Add image field
 
     class Meta:
         model = Shop
         fields = [
             'id', 'user', 'name', 'phone', 'location', 'description', 'operating_hours',
             'social_media', 'university_partner', 'created_at', 'updated_at', 'is_active',
-            'services', 'promotions', 'events', 'media', 'subscription', 'is_subscription_active'
+            'services', 'promotions', 'events', 'media', 'subscription', 'is_subscription_active',
+            'image'  # Include image
         ]
         read_only_fields = ['user', 'created_at', 'updated_at', 'is_subscription_active']

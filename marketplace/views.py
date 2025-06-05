@@ -19,6 +19,8 @@ from payments.models import Payment
 from django.contrib.contenttypes.models import ContentType
 from decimal import Decimal
 import logging
+from rest_framework.exceptions import PermissionDenied
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +45,6 @@ class BrandViewSet(viewsets.ModelViewSet):
         category_ids = self.request.query_params.get('category_id')
         if category_ids:
             try:
-                # Handle comma-separated category IDs
                 category_ids = [int(cid) for cid in category_ids.split(',') if cid]
                 queryset = queryset.filter(category_id__in=category_ids)
             except (ValueError, TypeError) as e:
@@ -87,14 +88,21 @@ class ProductViewSet(viewsets.ModelViewSet):
     pagination_class = InfiniteScrollCursorPagination
 
     def get_queryset(self):
-        queryset = Product.objects.filter(
-            owner=self.request.user
-        ).select_related(
+        queryset = Product.objects.select_related(
             'brand', 'category', 'owner', 'shop'
         ).prefetch_related(
             'images',
             Prefetch('attribute_values', queryset=AttributeValue.objects.select_related('attribute'))
         ).order_by('-created_at')
+
+        if not self.request.user.is_staff:
+            queryset = queryset.filter(
+                Q(owner=self.request.user) |
+                Q(is_active=True, category__is_active=True) & (
+                    Q(shop__isnull=True) |
+                    Q(shop__subscription__status='active', shop__subscription__end_date__gt=timezone.now())
+                )
+            )
 
         if category_id := self.request.query_params.get('category'):
             try:
@@ -109,24 +117,41 @@ class ProductViewSet(viewsets.ModelViewSet):
 
         return queryset
 
+    def get_serializer_class(self):
+        if self.action == 'recent' or self.action == 'by_category':
+            return ProductListSerializer
+        elif self.action == 'retrieve' or self.action == 'recent_detail':
+            return ProductDetailSerializer
+        return ProductSerializer
+
     def perform_create(self, serializer):
-        """
-        Create a product, associating it with the user's shop if one exists.
-        Set is_active=True if the user has a shop, bypassing payment/activation.
-        """
         user = self.request.user
         shop = Shop.objects.filter(user=user).first()
-        is_active = True if shop else False  # Set is_active=True if shop exists
-        serializer.save(owner=user, shop=shop, is_active=is_active)
-        logger.info(f"Product created for user {user.username}, shop: {shop.id if shop else None}, is_active: {is_active}")
+        if not shop:
+            logger.error(f"User {user.username} attempted product creation without a shop.")
+            raise PermissionDenied("You must create a shop before adding products.")
+        if shop.user != user:
+            logger.error(f"Shop {shop.id} does not belong to user {user.username}.")
+            raise PermissionDenied("Shop must belong to the product owner.")
+        is_active = shop.is_subscription_active()
+        instance = serializer.save(owner=user, shop=shop, is_active=is_active)
+        logger.info(f"Product created for user {user.username}, shop: {shop.id}, is_active: {is_active}")
 
-    @action(detail=False, methods=['post'], url_path='confirm-product-creation',
+        if not is_active:
+            return Response(
+                {
+                    "detail": "Product created but inactive. Use confirm_product_creation to activate.",
+                    "product_id": instance.id
+                },
+                status=status.HTTP_201_CREATED
+            )
+
+    @action(detail=True, methods=['post'], url_path='confirm-product-creation',
             permission_classes=[permissions.IsAuthenticated])
-    def confirm_product_creation(self, request):
-        """Activate a product using shop subscription, free offer, or payment"""
+    def confirm_product_creation(self, request, pk=None):
         with transaction.atomic():
             logger.info(f"Confirm product creation request: {request.data}")
-            product_id = request.data.get('product_id')
+            product_id = request.data.get('product_id', pk)
             transaction_id = request.data.get('transaction_id')
 
             if not product_id:
@@ -146,15 +171,15 @@ class ProductViewSet(viewsets.ModelViewSet):
                 )
 
             user = request.user
-            shop = product.shop  # Use product's associated shop
+            shop = product.shop
             offer = UserOffer.objects.filter(user=user).first()
 
-            if shop and shop.is_subscription_active():
-                logger.info(f"Activating product {product_id} via active shop subscription {shop.id}.")
+            if product.check_shop_subscription():
+                logger.info(f"Activating product {product_id} via active shop subscription or no shop.")
                 product.is_active = True
                 product.save()
                 return Response(
-                    {"detail": "Product activated via shop subscription."},
+                    {"detail": "Product activated.", "product_id": product.id},
                     status=status.HTTP_200_OK
                 )
 
@@ -167,12 +192,12 @@ class ProductViewSet(viewsets.ModelViewSet):
                 return Response(
                     {
                         "detail": "Product activated using free offer.",
-                        "free_products_remaining": offer.free_products_remaining
+                        "free_products_remaining": offer.free_products_remaining,
+                        "product_id": product.id
                     },
                     status=status.HTTP_200_OK
                 )
 
-            # Paid activation
             if not transaction_id:
                 payment_amount = max(
                     Decimal('1.00'),
@@ -200,10 +225,9 @@ class ProductViewSet(viewsets.ModelViewSet):
                 product.is_active = True
                 product.save()
                 return Response(
-                    {"detail": "Product activated via payment"},
+                    {"detail": "Product activated via payment.", "product_id": product.id},
                     status=status.HTTP_200_OK
                 )
-
             except Payment.DoesNotExist:
                 logger.error(f"No completed payment found for transaction_id {transaction_id}, product {product_id}.")
                 return Response(
@@ -221,7 +245,9 @@ class ProductViewSet(viewsets.ModelViewSet):
     def recent(self, request):
         logger.info(f"Recent list query params: {request.query_params}")
         queryset = Product.objects.filter(
-            category__is_active=True, is_active=True
+            Q(shop__isnull=True) | Q(shop__subscription__status='active', shop__subscription__end_date__gt=timezone.now()),
+            category__is_active=True,
+            is_active=True
         ).select_related(
             'brand', 'category', 'owner', 'shop'
         ).prefetch_related(
@@ -229,7 +255,6 @@ class ProductViewSet(viewsets.ModelViewSet):
             Prefetch('attribute_values', queryset=AttributeValue.objects.select_related('attribute'))
         )
 
-        # Search query
         if query := request.query_params.get('q'):
             queryset = queryset.filter(
                 Q(name__icontains=query) |
@@ -238,7 +263,6 @@ class ProductViewSet(viewsets.ModelViewSet):
                 Q(category__name__icontains=query)
             )
 
-        # Category filter (comma-separated IDs)
         if category_ids := self.request.query_params.get('category'):
             try:
                 category_ids = [int(cid) for cid in category_ids.split(',') if cid]
@@ -251,7 +275,6 @@ class ProductViewSet(viewsets.ModelViewSet):
                     'results': []
                 })
 
-        # Brand filter (comma-separated IDs)
         if brand_ids := self.request.query_params.get('brand'):
             try:
                 brand_ids = [int(bid) for bid in brand_ids.split(',') if bid]
@@ -264,14 +287,12 @@ class ProductViewSet(viewsets.ModelViewSet):
                     'results': []
                 })
 
-        # Price range filter
         if min_price := self.request.query_params.get('min_price'):
             try:
                 min_price = Decimal(min_price)
                 queryset = queryset.filter(price__gte=min_price)
             except (ValueError, TypeError) as e:
                 logger.warning(f"Invalid min_price: {min_price}, error: {str(e)}")
-                # Ignore invalid min_price
 
         if max_price := self.request.query_params.get('max_price'):
             try:
@@ -279,9 +300,7 @@ class ProductViewSet(viewsets.ModelViewSet):
                 queryset = queryset.filter(price__lte=max_price)
             except (ValueError, TypeError) as e:
                 logger.warning(f"Invalid max_price: {max_price}, error: {str(e)}")
-                # Ignore invalid max_price
 
-        # Attribute values filter
         if attribute_value_ids := self.request.query_params.get('attribute_value_ids'):
             try:
                 attr_ids = [int(aid) for aid in attribute_value_ids.split(',')]
@@ -295,7 +314,6 @@ class ProductViewSet(viewsets.ModelViewSet):
                     'results': []
                 })
 
-        # Ordering
         ordering = self.request.query_params.get('ordering', '-created_at')
         if ordering == 'price_low':
             queryset = queryset.order_by('price')
@@ -335,7 +353,8 @@ class ProductViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_404_NOT_FOUND)
 
         queryset = Product.objects.filter(
-            category=category, is_active=True
+            category=category,
+            is_active=True,
         ).select_related(
             'brand', 'category', 'owner', 'shop'
         ).prefetch_related(
@@ -358,8 +377,8 @@ class ProductViewSet(viewsets.ModelViewSet):
             'products': serializer.data
         })
 
-    @action(detail=True, methods=['get'], permission_classes=[permissions.AllowAny])
-    def public_detail(self, request, pk=None):
+    @action(detail=True, methods=['get'], permission_classes=[permissions.AllowAny], url_path='recent')
+    def recent_detail(self, request, pk=None):
         try:
             pk = int(pk)
         except (ValueError, TypeError):
@@ -369,13 +388,14 @@ class ProductViewSet(viewsets.ModelViewSet):
             )
 
         product = get_object_or_404(
-            Product.objects.filter(category__is_active=True, is_active=True)
-                .select_related('brand', 'category', 'owner', 'shop')
-                .prefetch_related(
-                    'images',
-                    Prefetch('attribute_values',
-                             queryset=AttributeValue.objects.select_related('attribute'))
-                ),
+            Product.objects.filter(
+                Q(shop__isnull=True) | Q(shop__subscription__status='active', shop__subscription__end_date__gt=timezone.now()),
+                category__is_active=True,
+                is_active=True
+            ).select_related('brand', 'category', 'owner', 'shop').prefetch_related(
+                'images',
+                Prefetch('attribute_values', queryset=AttributeValue.objects.select_related('attribute'))
+            ),
             id=pk
         )
         serializer = ProductDetailSerializer(product, context={'request': request})
