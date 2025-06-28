@@ -1,0 +1,67 @@
+# Virtual environment
+golden/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Django specific
+*.sqlite3
+db.sqlite3
+*.log
+*.pot
+*.pyc
+
+# VS Code and IDEs
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Env files
+.env
+*.env
+
+# Static and media files (user uploads, auto-generated)
+
+media/
+media/hls/
+media/properties/videos/original/
+sample_media/
+sample_media/videos/
+
+# Ignore CV2 binaries and large dependencies
+golden/Lib/site-packages/cv2/
+*.pyd
+*.dll
+
+# Ignore video/audio files globally
+*.mp4
+*.ts
+*.mov
+*.avi
+*.mkv
+*.flv
+*.webm
+*.ogg
+*.wav
+*.aac
+
+# Node (if you're using npm for frontend)
+node_modules/
+media/
+sample_media/videos/
+
+
+
+# Compiled files and coverage
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+coverage/
+htmlcov/
