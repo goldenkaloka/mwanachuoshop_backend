@@ -153,8 +153,18 @@ class Subscription(models.Model):
             models.Index(fields=['shop']),
         ]
 
+    def check_is_active(self):
+        """
+        Check if the subscription is currently active without causing database writes.
+        This is safe to use in properties, serializers, and list views.
+        """
+        return self.status == self.Status.ACTIVE and self.end_date > timezone.now()
+
     def is_active(self):
-        """Check if the subscription is active and update status if expired."""
+        """
+        Check if the subscription is active and update its status in the database if it has expired.
+        This method has a side-effect and should be used carefully, for example in a periodic task.
+        """
         if self.status == self.Status.ACTIVE and self.end_date < timezone.now():
             with transaction.atomic():
                 self.status = self.Status.EXPIRED
@@ -166,7 +176,7 @@ class Subscription(models.Model):
                     is_active=True
                 ).update(is_active=False)
                 logger.info(f"Deactivated {products_updated} products and shop {self.shop.id} due to expired subscription")
-        return self.status == self.Status.ACTIVE and self.end_date > timezone.now()
+        return self.check_is_active()
 
     def extend_subscription(self, months=1, is_initial_free=False):
         """Extend the subscription duration and reactivate shop/products."""

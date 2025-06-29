@@ -60,14 +60,6 @@ class ShopViewSet(viewsets.ModelViewSet):
     serializer_class = ShopSerializer
     permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerWithActiveSubscriptionOrReadOnly]
 
-    def get_permissions(self):
-        """
-        Allow unauthenticated access for the retrieve action.
-        """
-        if self.action == 'retrieve':
-            return [AllowAny()]
-        return super().get_permissions()
-
     def get_queryset(self):
         """
         Return shops based on user authentication and subscription status.
