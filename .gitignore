@@ -21,12 +21,10 @@ db.sqlite3
 .DS_Store
 Thumbs.db
 
-# Env files
 .env
 *.env
 
-# Static and media files (user uploads, auto-generated)
-
+staticfiles/
 media/
 media/hls/
 media/properties/videos/original/
@@ -46,16 +44,9 @@ golden/Lib/site-packages/cv2/
 *.mkv
 *.flv
 *.webm
-*.ogg
-*.wav
-*.aac
 
 # Node (if you're using npm for frontend)
 node_modules/
-media/
-sample_media/videos/
-
-
 
 # Compiled files and coverage
 *.so

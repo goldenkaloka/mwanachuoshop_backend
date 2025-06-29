@@ -18,6 +18,44 @@ from django.core.exceptions import ValidationError
 
 logger = logging.getLogger(__name__)
 
+class ShopRelatedViewSetMixin:
+    """
+    A mixin for viewsets whose models have a direct ForeignKey to a Shop.
+    - Filters querysets to show only active/public content or content owned by the user.
+    - Checks for shop ownership and active subscription on creation.
+    """
+    permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerWithActiveSubscriptionOrReadOnly]
+
+    def get_queryset(self):
+        # The base queryset must be defined in the viewset's `queryset` attribute.
+        queryset = super().get_queryset().select_related('shop__user', 'shop__subscription')
+        user = self.request.user
+
+        # Base filter for what is considered "publicly active"
+        active_q = Q(
+            shop__subscription__status=Subscription.Status.ACTIVE,
+            shop__subscription__end_date__gt=timezone.now(),
+            shop__is_active=True
+        )
+
+        if not user.is_authenticated:
+            return queryset.filter(active_q)
+        
+        if user.is_staff:
+            return queryset
+
+        # Authenticated non-staff see their own content + active public content
+        owner_q = Q(shop__user=user)
+        return queryset.filter(owner_q | active_q).distinct()
+
+    def perform_create(self, serializer):
+        shop = serializer.validated_data['shop']
+        if shop.user != self.request.user:
+            raise PermissionDenied("You can only add items to your own shop.")
+        if not shop.is_subscription_active():
+            raise PermissionDenied("Cannot add items to a shop with an inactive subscription.")
+        serializer.save()
+
 class ShopViewSet(viewsets.ModelViewSet):
     serializer_class = ShopSerializer
     permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerWithActiveSubscriptionOrReadOnly]
@@ -81,152 +119,27 @@ class ShopViewSet(viewsets.ModelViewSet):
             logger.info(f"No shop found for user {request.user.username}")
             return Response({"detail": "Shop not found."}, status=status.HTTP_404_NOT_FOUND)
 
-class ShopMediaViewSet(viewsets.ModelViewSet):
+class ShopMediaViewSet(ShopRelatedViewSetMixin, viewsets.ModelViewSet):
     queryset = ShopMedia.objects.all()
     serializer_class = ShopMediaSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerWithActiveSubscriptionOrReadOnly]
-
-    def get_queryset(self):
-        queryset = super().get_queryset().select_related('shop__subscription')
-        if not self.request.user.is_authenticated:
-            queryset = queryset.filter(
-                shop__subscription__status=Subscription.Status.ACTIVE,
-                shop__subscription__end_date__gt=timezone.now(),
-                shop__is_active=True
-            )
-        elif not self.request.user.is_staff:
-            queryset = queryset.filter(
-                Q(shop__user=self.request.user) | 
-                Q(
-                    shop__subscription__status=Subscription.Status.ACTIVE,
-                    shop__subscription__end_date__gt=timezone.now(),
-                    shop__is_active=True
-                )
-            )
-        return queryset
 
     def create(self, request, *args, **kwargs):
+        # The custom create method can be simplified. DRF's default create
+        # handles validation and calls perform_create automatically.
         logger.debug(f"Received request data: {request.data}")
-        serializer = self.get_serializer(data=request.data)
-        if not serializer.is_valid():
-            logger.error(f"ShopMediaViewSet create error: {serializer.errors}, data: {request.data}")
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        return super().create(request, *args, **kwargs)
 
-    def perform_create(self, serializer):
-        try:
-            shop = serializer.validated_data['shop']
-            if shop.user != self.request.user:
-                raise PermissionDenied("You can only add media to your own shops.")
-            if not shop.is_subscription_active():
-                raise PermissionDenied("Cannot add media to a shop with an inactive subscription.")
-            serializer.save()
-        except Exception as e:
-            logger.error(f"ShopMediaViewSet perform_create error: {str(e)}, data: {serializer.validated_data}")
-            raise
-
-class PromotionViewSet(viewsets.ModelViewSet):
+class PromotionViewSet(ShopRelatedViewSetMixin, viewsets.ModelViewSet):
+    queryset = Promotion.objects.all()
     serializer_class = PromotionSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerWithActiveSubscriptionOrReadOnly]
 
-    def get_queryset(self):
-        queryset = Promotion.objects.select_related('shop__subscription')
-        if not self.request.user.is_authenticated:
-            queryset = queryset.filter(
-                shop__subscription__status=Subscription.Status.ACTIVE,
-                shop__subscription__end_date__gt=timezone.now(),
-                shop__is_active=True
-            )
-        elif not self.request.user.is_staff:
-            queryset = queryset.filter(
-                Q(shop__user=self.request.user) | 
-                Q(
-                    shop__subscription__status=Subscription.Status.ACTIVE,
-                    shop__subscription__end_date__gt=timezone.now(),
-                    shop__is_active=True
-                )
-            )
-        return queryset
-
-    def perform_create(self, serializer):
-        shop = serializer.validated_data['shop']
-        if shop.user != self.request.user:
-            raise PermissionDenied("You can only add promotions to your own shops.")
-        if not shop.is_subscription_active():
-            raise PermissionDenied("Cannot add promotions to a shop with an inactive subscription.")
-        serializer.save()
-
-class EventViewSet(viewsets.ModelViewSet):
+class EventViewSet(ShopRelatedViewSetMixin, viewsets.ModelViewSet):
+    queryset = Event.objects.all()
     serializer_class = EventSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerWithActiveSubscriptionOrReadOnly]
 
-    def get_queryset(self):
-        queryset = Event.objects.select_related('shop__subscription')
-        if not self.request.user.is_authenticated:
-            queryset = queryset.filter(
-                shop__subscription__status=Subscription.Status.ACTIVE,
-                shop__subscription__end_date__gt=timezone.now(),
-                shop__is_active=True
-            )
-        elif not self.request.user.is_staff:
-            queryset = queryset.filter(
-                Q(shop__user=self.request.user) | 
-                Q(
-                    shop__subscription__status=Subscription.Status.ACTIVE,
-                    shop__subscription__end_date__gt=timezone.now(),
-                    shop__is_active=True
-                )
-            )
-        return queryset
-
-    def perform_create(self, serializer):
-        shop = serializer.validated_data['shop']
-        if shop.user != self.request.user:
-            raise PermissionDenied("You can only add events to your own shops.")
-        if not shop.is_subscription_active():
-            raise PermissionDenied("Cannot add events to a shop with an inactive subscription.")
-        serializer.save()
-
-class ServicesViewSet(viewsets.ModelViewSet):
+class ServicesViewSet(ShopRelatedViewSetMixin, viewsets.ModelViewSet):
+    queryset = Services.objects.all()
     serializer_class = ServicesSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerWithActiveSubscriptionOrReadOnly]
-
-    def get_queryset(self):
-        queryset = Services.objects.select_related('shop__subscription')
-        if not self.request.user.is_authenticated:
-            queryset = queryset.filter(
-                shop__subscription__status=Subscription.Status.ACTIVE,
-                shop__subscription__end_date__gt=timezone.now(),
-                shop__is_active=True
-            )
-        elif not self.request.user.is_staff:
-            queryset = queryset.filter(
-                Q(shop__user=self.request.user) | 
-                Q(
-                    shop__subscription__status=Subscription.Status.ACTIVE,
-                    shop__subscription__end_date__gt=timezone.now(),
-                    shop__is_active=True
-                )
-            )
-        return queryset
-
-    def list(self, request, *args, **kwargs):
-        """
-        Return a list of services, ensuring a 200 response even if the queryset is empty.
-        """
-        queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    def perform_create(self, serializer):
-        shop = serializer.validated_data['shop']
-        if shop.user != self.request.user:
-            raise PermissionDenied("You can only add services to your own shops.")
-        if not shop.is_subscription_active():
-            raise PermissionDenied("Cannot add services to a shop with an inactive subscription.")
-        serializer.save()
 
 class UserOfferViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = UserOfferSerializer

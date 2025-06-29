@@ -2,6 +2,7 @@ from decimal import Decimal
 import os
 from pathlib import Path
 from datetime import timedelta
+import environ
 
 # Import ZenoPay for payment integration
 import dj_database_url
@@ -10,10 +11,14 @@ from zenopay import ZenoPay  # Adjust the import path if necessary
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv('SECRET_KEY', 'w)ve0*qf@xqib741i-mg&rm6&$2hmy10zo0jp!0kcdmnsqhiiq')
+# django-environ setup
+env = environ.Env(
+    DEBUG=(bool, False)
+)
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+SECRET_KEY = env('SECRET_KEY')
+DEBUG = env('DEBUG')
 
 ALLOWED_HOSTS = ['*']
 
@@ -91,45 +96,33 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'core.wsgi.application'
 
-# Database
-# DATABASES = {
-#     'default': dj_database_url.config(
-#         default=os.getenv('DATABASE_URL', 'postgresql://backend_rcew_user:tixZtRmJF57FLHPJRUKxg8JFXN6B7VMm@dpg-d18tdkh5pdvs73cul6s0-a.oregon-postgres.render.com/backend_rcew'),
-#         conn_max_age=600
-#     )
-# }
-
-
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': env.db('DATABASE_URL', default='sqlite:///db.sqlite3')
 }
 
 
 
-AWS_ACCESS_KEY_ID = os.getenv('CLOUDFLARE_R2_ACCESS_KEY_ID', 'c02e50bd8f808ebea69917e8a475c2a4')
-AWS_SECRET_ACCESS_KEY = os.getenv('CLOUDFLARE_R2_SECRET_ACCESS_KEY', 'bcf277ea30d80e011fb1828f250486f21c83e9b832b94f112fbb26a83819bb86')
-AWS_STORAGE_BUCKET_NAME = os.getenv('CLOUDFLARE_R2_BUCKET_NAME', 'mwanachuoshop-media')
-AWS_S3_ENDPOINT_URL = os.getenv('CLOUDFLARE_R2_ENDPOINT_URL', 'https://34b85ecebdccd8f57b5414d007372647.r2.cloudflarestorage.com')
-AWS_S3_REGION_NAME = 'auto'
+AWS_ACCESS_KEY_ID = env('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = env('AWS_SECRET_ACCESS_KEY')
+AWS_STORAGE_BUCKET_NAME = env('AWS_STORAGE_BUCKET_NAME')
+AWS_S3_ENDPOINT_URL = env('AWS_S3_ENDPOINT_URL')
+AWS_S3_REGION_NAME = env('AWS_S3_REGION_NAME')
 AWS_S3_FILE_OVERWRITE = False
 AWS_S3_OBJECT_PARAMETERS = {'CacheControl': 'max-age=86400'}
 AWS_DEFAULT_ACL = 'public-read'
-AWS_S3_CUSTOM_DOMAIN = os.getenv('CLOUDFLARE_R2_CUSTOM_DOMAIN', 'pub-80453e25e7504aa88343419d0a831d1d.r2.dev')
+AWS_S3_CUSTOM_DOMAIN = env('AWS_S3_CUSTOM_DOMAIN')
 AWS_S3_SIGNATURE_VERSION = 's3v4'
 DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
-MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
+MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/' if AWS_S3_CUSTOM_DOMAIN else f'{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Cloudflare Stream configuration
-CLOUDFLARE_ACCOUNT_ID = '34b85ecebdccd8f57b5414d007372647'
-CLOUDFLARE_STREAM_API_TOKEN = 'HKvNOwsjv5hfTXeB3cdsKqUsPf0moHNkuvW-XNgO'
+CLOUDFLARE_ACCOUNT_ID = env('CLOUDFLARE_ACCOUNT_ID')
+CLOUDFLARE_STREAM_API_TOKEN = env('CLOUDFLARE_STREAM_API_TOKEN')
 CLOUDFLARE_STREAM_API_BASE_URL = os.getenv('CLOUDFLARE_STREAM_API_BASE_URL', 'https://api.cloudflare.com/client/v4')
 
 # Email configuration for Gmail SMTP
@@ -137,9 +130,9 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER =  'mwanachuoshop@gmail.com'
-EMAIL_HOST_PASSWORD =  'rsbp dzmj gpcn tudf'
-DEFAULT_FROM_EMAIL =  'mwanachuoshop@gmail.com'
+EMAIL_HOST_USER = env('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = env('EMAIL_HOST_USER')
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -220,7 +213,7 @@ SOCIALACCOUNT_ADAPTER = 'users.adapters.CustomSocialAccountAdapter'
 LOGIN_REDIRECT_URL = 'http://localhost:8080/dashboard'
 SOCIALACCOUNT_LOGIN_ON_GET = True  
 
-FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:8080')
+FRONTEND_URL = env('FRONTEND_URL')
 
 # --- CORS (Cross-Origin Resource Sharing) settings ---
 
@@ -239,16 +232,16 @@ FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:8080')
 # This is crucial for allowing the frontend to send credentials (like cookies or auth headers).
 CORS_ALLOW_CREDENTIALS = True
 
-CSRF_TRUSTED_ORIGINS = ['https://master-relevant-flounder.ngrok-free.app', os.getenv('FRONTEND_URL', 'http://localhost:8080')]
+CSRF_TRUSTED_ORIGINS = ['https://master-relevant-flounder.ngrok-free.app', env('FRONTEND_URL')]
 
 # Pesapal settings
-PESAPAL_DEMO = True  
-PESAPAL_CONSUMER_KEY = 'ngW+UEcnDhltUc5fxPfrCD987xMh3Lx8'  # From Pesapal email
-PESAPAL_CONSUMER_SECRET = 'q27RChYs5UkypdcNYKzuUw460Dg='  # From Pesapal email
+PESAPAL_DEMO = env.bool('PESAPAL_DEMO', default=True)
+PESAPAL_CONSUMER_KEY = env('PESAPAL_CONSUMER_KEY')
+PESAPAL_CONSUMER_SECRET = env('PESAPAL_CONSUMER_SECRET')
 # The IPN URL you register on your Pesapal merchant dashboard.
 # Example: 'https://master-relevant-flounder.ngrok-free.app/v3/payments/callback/pesapal/'
-PESAPAL_NOTIFICATION_ID = 'dcfd214e-a7e1-4693-92a2-dba818d5ee07'  # The ID provided by Pesapal for your registered IPN URL.
-PESAPAL_CALLBACK_URL = 'https://master-relevant-flounder.ngrok-free.app/v3/payments/transaction-completed/'  # This is the return URL for the user's browser
+PESAPAL_NOTIFICATION_ID = env('PESAPAL_NOTIFICATION_ID')
+PESAPAL_CALLBACK_URL = env('PESAPAL_CALLBACK_URL')
 PESAPAL_TRANSACTION_DEFAULT_REDIRECT_URL = 'http://localhost:3000/wallet/success'  # Frontend success page
 PESAPAL_ALLOWED_IPS = []  # Disable IP restrictions for testing
 PESAPAL_API_URL = 'https://cybqa.pesapal.com/pesapalv3/api' if PESAPAL_DEMO else 'https://pay.pesapal.com/v3/api'
@@ -381,8 +374,8 @@ ZENOPAY_ALLOWED_IPS = ['203.0.113.1', '203.0.113.2']
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
         'APP': {
-            'client_id': '821687065674-e7tb9egn7l7a6i7k6usbi882nid7drdc.apps.googleusercontent.com',
-            'secret': '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',
+            'client_id': env('GOOGLE_OAUTH_CLIENT_ID'),
+            'secret': env('GOOGLE_OAUTH_CLIENT_SECRET'),
             'key': ''
         },
         'SCOPE': [
