@@ -21,8 +21,6 @@ db.sqlite3
 .DS_Store
 Thumbs.db
 
-.env
-*.env
 
 staticfiles/
 media/
