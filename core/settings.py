@@ -96,10 +96,22 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'core.wsgi.application'
 
-DATABASES = {
-    'default': env.db('DATABASE_URL', default='sqlite:///db.sqlite3')
-}
 
+# Database configuration for Render PostgreSQL
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'mwanachuoshop_database',
+        'USER': 'mwanachuoshop_database_user',
+        'PASSWORD': '1AW0GCZL5u6ugISSVtJiODVJmPgvvnFw',
+        'HOST': 'dpg-d1hhpjndiees73bdmehg-a.oregon-postgres.render.com',  # Internal hostname for Render
+        'PORT': '5432',
+        'CONN_MAX_AGE': 600,  # Keep connections alive for 10 minutes
+        'OPTIONS': {
+            'connect_timeout': 10,  # Timeout after 10 seconds
+        },
+    }
+}
 
 
 AWS_ACCESS_KEY_ID = env('AWS_ACCESS_KEY_ID')
@@ -246,6 +258,11 @@ PESAPAL_TRANSACTION_DEFAULT_REDIRECT_URL = 'http://localhost:3000/wallet/success
 PESAPAL_ALLOWED_IPS = []  # Disable IP restrictions for testing
 PESAPAL_API_URL = 'https://cybqa.pesapal.com/pesapalv3/api' if PESAPAL_DEMO else 'https://pay.pesapal.com/v3/api'
 
+# Parse Redis URL from environment
+redis_url = env('REDIS_URL', default='redis://localhost:6379/0')
+from urllib.parse import urlparse
+url = urlparse(redis_url)
+
 Q_CLUSTER = {
     'name': 'VideoProcessingCluster',
     'workers': 4,  # Adjust based on server CPU cores (e.g., 1-2 for dev, 4-8 for prod)
@@ -258,15 +275,15 @@ Q_CLUSTER = {
     'cpu_affinity': 1,  # Bind each worker to 1 CPU core
     'label': 'Video Processing',
     # Use ORM for development; comment out Redis
-    'orm': 'default',  # SQLite for development
-    # Use Redis for production; uncomment when deploying
-    # 'redis': {
-    #     'host': 'redis-15533.c270.us-east-1-3.ec2.redns.redis-cloud.com',
-    #     'port': 15533,
-    #     'db': 0,
-    #     'username': 'default',
-    #     'password': os.getenv('REDIS_PASSWORD', 'ntq8yDI11FXmvpLog7Ye8y35qEr1rk5C'),
-    # }
+    #'orm': 'default',  # SQLite for development
+    'redis': {
+        'host': url.hostname,
+        'port': url.port,
+        'db': int(url.path.lstrip('/') or 0),
+        'username': url.username or None,
+        'password': url.password or None,
+        'ssl': url.scheme == 'rediss',
+    },
 }
 
 
