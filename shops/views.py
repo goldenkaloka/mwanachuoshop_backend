@@ -70,20 +70,17 @@ class ShopViewSet(viewsets.ModelViewSet):
         queryset = Shop.objects.select_related('user', 'subscription').prefetch_related(
             'media', 'services', 'promotions', 'events'
         )
+        now = timezone.now()
         if not self.request.user.is_authenticated:
             queryset = queryset.filter(
                 subscription__status=Subscription.Status.ACTIVE,
-                subscription__end_date__gt=timezone.now(),
+                subscription__end_date__gt=now,
                 is_active=True
             )
         elif not self.request.user.is_staff:
             queryset = queryset.filter(
-                Q(user=self.request.user) | 
-                Q(
-                    subscription__status=Subscription.Status.ACTIVE,
-                    subscription__end_date__gt=timezone.now(),
-                    is_active=True
-                )
+                (Q(user=self.request.user)) | 
+                (Q(subscription__status=Subscription.Status.ACTIVE) & Q(subscription__end_date__gt=now) & Q(is_active=True))
             )
         return queryset
 
@@ -139,6 +136,14 @@ class UserOfferViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         return UserOffer.objects.filter(user=self.request.user)
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated], url_path='me')
+    def me(self, request):
+        offer = UserOffer.objects.filter(user=request.user).first()
+        if offer:
+            serializer = self.get_serializer(offer)
+            return Response(serializer.data)
+        return Response({'detail': 'No offer found for this user.'}, status=404)
 
 class SubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = SubscriptionSerializer

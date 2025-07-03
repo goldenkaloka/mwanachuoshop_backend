@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from .models import Shop, ShopMedia, Promotion, Event, Services, Subscription, UserOffer
 import logging
+from datetime import timedelta
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +72,7 @@ class ShopSerializer(serializers.ModelSerializer):
     subscription = SubscriptionSerializer(read_only=True)
     is_subscription_active = serializers.ReadOnlyField()
     image = serializers.ImageField(use_url=True, allow_null=True, required=False)  # Add image field
+    subscription_warning = serializers.SerializerMethodField()
 
     class Meta:
         model = Shop
@@ -77,6 +80,19 @@ class ShopSerializer(serializers.ModelSerializer):
             'id', 'user', 'name', 'phone', 'location', 'description', 'operating_hours',
             'social_media', 'university_partner', 'created_at', 'updated_at', 'is_active',
             'services', 'promotions', 'events', 'media', 'subscription', 'is_subscription_active',
-            'image'  # Include image
+            'image', 'subscription_warning'
         ]
         read_only_fields = ['user', 'created_at', 'updated_at', 'is_subscription_active']
+
+    def get_subscription_warning(self, obj):
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        # Only show to the shop owner
+        if user and user.is_authenticated and obj.user == user:
+            subscription = getattr(obj, 'subscription', None)
+            if subscription and subscription.status == subscription.Status.ACTIVE and subscription.end_date:
+                now = timezone.now()
+                if subscription.end_date - now < timedelta(days=7):
+                    days_left = (subscription.end_date - now).days
+                    return f"Your subscription will expire in {days_left} day(s). Please renew soon!"
+        return None

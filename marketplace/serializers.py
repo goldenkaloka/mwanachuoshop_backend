@@ -125,13 +125,19 @@ class ProductSerializer(serializers.ModelSerializer):
         allow_null=True
     )
     payment_amount = serializers.SerializerMethodField(read_only=True)
+    images_upload = serializers.ListField(
+        child=serializers.ImageField(),
+        write_only=True,
+        required=False,
+        help_text="Upload multiple images at once."
+    )
 
     class Meta:
         model = Product
         fields = [
             'id', 'name', 'description', 'brand', 'brand_id', 'category', 'category_id',
             'owner', 'shop', 'price', 'attribute_values', 'attribute_value_ids', 'images',
-            'created_at', 'updated_at', 'is_active', 'payment_amount', 'condition'
+            'images_upload', 'created_at', 'updated_at', 'is_active', 'payment_amount', 'condition'
         ]
         read_only_fields = ['owner', 'created_at', 'updated_at', 'is_active']
 
@@ -214,10 +220,13 @@ class ProductSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
+        images = validated_data.pop('images_upload', [])
         attribute_value_ids = validated_data.pop('attribute_value_ids', [])
-        product = Product.objects.create(**validated_data)
+        product = super().create(validated_data)
         if attribute_value_ids:
             product.attribute_values.set(attribute_value_ids)
+        for image in images:
+            ProductImage.objects.create(product=product, image=image, is_primary=False)
         return product
 
 class ProductImageUrlSerializer(serializers.ModelSerializer):

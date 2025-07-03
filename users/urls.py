@@ -5,6 +5,7 @@ from dj_rest_auth.views import (
 )
 from dj_rest_auth.views import UserDetailsView as CustomUserDetailsView
 from users.views import CSRFView, CustomRegisterView, ProfileView
+from shops.views import UserOfferViewSet
 
 urlpatterns = [
     path('auth/register/', CustomRegisterView.as_view(), name='rest_register'),
@@ -17,4 +18,5 @@ urlpatterns = [
     path('get-csrf/', CSRFView.as_view(), name='get-csrf'),
     path('auth/user/', CustomUserDetailsView.as_view(), name='rest_user_details'),
     path('auth/profile/', ProfileView.as_view(), name='user_profile'),
+    path('offer/', UserOfferViewSet.as_view({'get': 'me'}), name='user-offer'),
 ]

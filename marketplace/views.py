@@ -119,45 +119,17 @@ class ProductViewSet(viewsets.ModelViewSet):
     pagination_class = InfiniteScrollCursorPagination
 
     def get_queryset(self):
-        queryset = Product.objects.select_related(
-            'brand', 'category', 'owner', 'shop'
-        ).prefetch_related(
-            'images',
-            Prefetch('attribute_values', queryset=AttributeValue.objects.select_related('attribute'))
-        ).order_by('-created_at')
-
-        # For private endpoints (/products/), return only the user's products if authenticated
-        if self.action not in ['recent', 'recent_detail', 'by_category']:
-            if not self.request.user.is_authenticated:
-                raise permissions.PermissionDenied("Authentication required for user-specific products.")
-            queryset = queryset.filter(owner=self.request.user)
-        else:
-            # For public endpoints (/products/recent/, /products/recent/<pk>/, /products/category/<category_id>/)
+        queryset = Product.objects.select_related('shop', 'owner', 'brand', 'category').prefetch_related('images', 'attribute_values')
+        user = self.request.user
+        now = timezone.now()
+        if not user.is_authenticated:
+            # Show all active products, regardless of shop
+            queryset = queryset.filter(is_active=True)
+        elif not user.is_staff:
             queryset = queryset.filter(
-                Q(is_active=True, category__is_active=True) & (
-                    Q(shop__isnull=True) |
-                    Q(shop__subscription__status='active', shop__subscription__end_date__gt=timezone.now())
-                )
+                (Q(owner=user)) |
+                Q(is_active=True)
             )
-
-        # Apply additional filters (category, brand, etc.)
-        if category_id := self.request.query_params.get('category'):
-            try:
-                category_id = int(category_id)
-                include_descendants = self.request.query_params.get('include_descendants', 'false').lower() == 'true'
-                valid_category_ids = {category_id}
-                if include_descendants:
-                    category = Category.objects.get(id=category_id)
-                    valid_category_ids.update(category.get_descendants(include_self=False).values_list('id', flat=True))
-                queryset = queryset.filter(category__id__in=valid_category_ids)
-            except (ValueError, TypeError, Category.DoesNotExist):
-                queryset = Product.objects.none()
-        if brand_id := self.request.query_params.get('brand'):
-            try:
-                queryset = queryset.filter(brand__id=int(brand_id))
-            except (ValueError, TypeError):
-                queryset = Product.objects.none()
-
         return queryset
 
     def get_serializer_class(self):
@@ -209,6 +181,15 @@ class ProductViewSet(viewsets.ModelViewSet):
             response_data['detail'] = "Product created and activated." if is_active else "Product created but not activated."
             logger.info(f"Product {instance.id} created for user {user.username}, is_active: {is_active}")
             return Response(response_data, status=status.HTTP_201_CREATED)
+
+    def create(self, request, *args, **kwargs):
+        print("DEBUG: Raw request data:", request.data)
+        print("DEBUG: Raw request FILES:", request.FILES)
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            print("DEBUG: Serializer errors:", serializer.errors)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return super().create(request, *args, **kwargs)
 
     @action(detail=False, permission_classes=[permissions.AllowAny])
     def recent(self, request):

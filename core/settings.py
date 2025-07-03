@@ -97,21 +97,30 @@ TEMPLATES = [
 WSGI_APPLICATION = 'core.wsgi.application'
 
 
-# Database configuration for Render PostgreSQL
+
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'mwanachuoshop_database',
-        'USER': 'mwanachuoshop_database_user',
-        'PASSWORD': '1AW0GCZL5u6ugISSVtJiODVJmPgvvnFw',
-        'HOST': 'dpg-d1hhpjndiees73bdmehg-a.oregon-postgres.render.com',  # Internal hostname for Render
-        'PORT': '5432',
-        'CONN_MAX_AGE': 600,  # Keep connections alive for 10 minutes
-        'OPTIONS': {
-            'connect_timeout': 10,  # Timeout after 10 seconds
-        },
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
+# # Database configuration for Render PostgreSQL
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'mwanachuoshop_database',
+#         'USER': 'mwanachuoshop_database_user',
+#         'PASSWORD': '1AW0GCZL5u6ugISSVtJiODVJmPgvvnFw',
+#         'HOST': 'dpg-d1hhpjndiees73bdmehg-a.oregon-postgres.render.com',  # Internal hostname for Render
+#         'PORT': '5432',
+#         'CONN_MAX_AGE': 600,  # Keep connections alive for 10 minutes
+#         'OPTIONS': {
+#             'connect_timeout': 10,  # Timeout after 10 seconds
+#         },
+#     }
+# }
 
 
 AWS_ACCESS_KEY_ID = os.getenv('CLOUDFLARE_R2_ACCESS_KEY_ID', 'c02e50bd8f808ebea69917e8a475c2a4')
