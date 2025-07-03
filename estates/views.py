@@ -55,16 +55,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
             return [permissions.AllowAny()]
         return [permissions.IsAuthenticated(), IsOwnerOrAdmin()]
 
-    def validate_video_file(self, video_file):
-        allowed_types = ['video/mp4', 'video/mov', 'video/avi', 'video/mkv', 'video/webm']
-        max_size = 100 * 1024 * 1024  # 100 MB
-        mime_type, _ = mimetypes.guess_type(video_file.name)
-        if mime_type not in allowed_types:
-            raise ValidationError(f"Unsupported video format. Allowed formats: {', '.join(allowed_types)}")
-        if video_file.size > max_size:
-            raise ValidationError(f"Video file too large. Maximum size: {int(max_size / (1024 * 1024))} MB")
-
-    def create(self, request, *args, **kwargs):  # Removed @staticmethod
+    def create(self, request, *args, **kwargs):
         logger.info(f"Creating property for user {request.user.username}. Request data: {request.data}")
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -81,30 +72,10 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 offer.free_estates_remaining -= 1
                 offer.save()
 
-            # Pop video data before saving the instance
-            video_file = serializer.validated_data.pop('video', None)
-            video_name = serializer.validated_data.get('video_name', '')
-            video_description = serializer.validated_data.get('video_description', '')
-
             instance = serializer.save(
                 owner=user,
-                is_available=is_available,
-                video_processing_status=Property.VideoProcessingStatus.PENDING if video_file else Property.VideoProcessingStatus.NO_VIDEO,
-                video_name=video_name,
-                video_description=video_description
+                is_available=is_available
             )
-
-            if video_file:
-                self.validate_video_file(video_file)
-                # Save video to a temporary location and pass the path to the task
-                temp_video_path = default_storage.save(f'temp_videos/{instance.id}_{video_file.name}', video_file)
-                async_task(
-                    'estates.tasks.process_property_video',
-                    instance.id,
-                    temp_video_path,
-                    video_name=video_name or video_file.name,
-                    video_description=video_description
-                )
 
             if not is_available:
                 try:
@@ -123,8 +94,8 @@ class PropertyViewSet(viewsets.ModelViewSet):
                         "free_estates_remaining": free_estates_remaining
                     }, status=status.HTTP_400_BAD_REQUEST)
 
-            response_status = status.HTTP_202_ACCEPTED if video_file else status.HTTP_201_CREATED
-            detail_message = "Property creation accepted. Video is processing." if video_file else "Property created and activated."
+            response_status = status.HTTP_201_CREATED
+            detail_message = "Property created and activated."
 
             response_data = {
                 'id': instance.id,
@@ -141,7 +112,6 @@ class PropertyViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         user = self.request.user
         instance = self.get_object()
-        
         with transaction.atomic():
             if serializer.validated_data.get('is_available', instance.is_available) and not instance.is_available:
                 offer = UserOffer.objects.filter(user=user).first()
@@ -155,34 +125,11 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 if not (offer and offer.free_estates_remaining > 0) and not has_paid:
                     logger.error(f"User {user.username} attempted to set property {instance.id} is_available=True without offer or payment.")
                     raise permissions.PermissionDenied("Free offer or payment required to make property available.")
-
-            video_file = serializer.validated_data.pop('video', None)
-            video_name = serializer.validated_data.get('video_name', instance.video_name)
-            video_description = serializer.validated_data.get('video_description', instance.video_description)
-
-            # Save other fields first
-            instance = serializer.save(video_name=video_name, video_description=video_description)
-
-            if video_file:
-                self.validate_video_file(video_file)
-                # If there's an old video, we might want to delete it.
-                # This can be handled in the background task as well.
-                temp_video_path = default_storage.save(f'temp_videos/{instance.id}_{video_file.name}', video_file)
-                async_task(
-                    'estates.tasks.process_property_video',
-                    instance.id,
-                    temp_video_path,
-                    video_name=video_name or video_file.name,
-                    video_description=video_description
-                )
-                # Set status to pending immediately for user feedback
-                instance.video_processing_status = Property.VideoProcessingStatus.PENDING
-                instance.save()
+            instance = serializer.save()
 
     def get_queryset(self):
         queryset = super().get_queryset()
         my_properties = self.request.query_params.get('my_properties', 'false').lower() == 'true'
-        has_video = self.request.query_params.get('has_video', 'false').lower() == 'true'
         min_price = self.request.query_params.get('min_price')
         max_price = self.request.query_params.get('max_price')
         
@@ -192,10 +139,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(owner=self.request.user)
         elif not self.request.user.is_staff:
             queryset = queryset.filter(is_available=True)
-            
-        if has_video:
-            queryset = queryset.exclude(stream_video_id__isnull=True)
-            
+        
         if min_price is not None:
             try:
                 queryset = queryset.filter(price__gte=Decimal(min_price))
@@ -206,7 +150,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 queryset = queryset.filter(price__lte=Decimal(max_price))
             except ValueError:
                 pass
-                
+        
         return queryset.select_related('owner', 'property_type').prefetch_related('images')
 
     def get_serializer_context(self):

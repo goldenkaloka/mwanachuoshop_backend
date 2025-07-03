@@ -24,7 +24,7 @@ class PropertyType(models.Model):
         return self.name
 
 class Property(models.Model):
-    """Property model with Cloudflare Stream integration"""
+    """Property model with image support only (no video)"""
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='properties')
     property_type = models.ForeignKey(PropertyType, on_delete=models.PROTECT, related_name='properties')
     title = models.CharField(max_length=100)
@@ -33,22 +33,6 @@ class Property(models.Model):
     location = models.CharField(max_length=100, help_text="Geographical location of the property.")
     price = models.DecimalField(max_digits=15, decimal_places=2, help_text="Price of the property in TZS.")
     is_available = models.BooleanField(default=False, help_text="Indicates if the property is active and visible to users.")
-    
-    # Cloudflare Stream fields
-    class VideoProcessingStatus(models.TextChoices):
-        NO_VIDEO = 'no_video', 'No Video'
-        PENDING = 'pending', 'Pending Upload'
-        PROCESSING = 'processing', 'Processing'
-        READY = 'ready', 'Ready'
-        FAILED = 'failed', 'Failed'
-
-    stream_video_id = models.CharField(max_length=100, blank=True, null=True, help_text="Unique ID from Cloudflare Stream for the uploaded video.")
-    video_processing_status = models.CharField(max_length=20, choices=VideoProcessingStatus.choices, default=VideoProcessingStatus.NO_VIDEO, help_text="Current processing status of the video.")
-    video_name = models.CharField(max_length=500, blank=True)
-    video_description = models.TextField(blank=True)
-    thumbnail_url = models.URLField(blank=True, null=True)  # Stores Cloudflare Stream thumbnail URL
-    duration = models.FloatField(null=True, blank=True)  # Video duration in seconds
-    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -56,14 +40,13 @@ class Property(models.Model):
         verbose_name = "Property"
         verbose_name_plural = "Properties"
         ordering = ['-created_at']
-        unique_together = ['owner', 'title'] # Ensures an owner doesn't have two properties with the exact same title
+        unique_together = ['owner', 'title']
         indexes = [
             models.Index(fields=['owner']),
             models.Index(fields=['is_available']),
             models.Index(fields=['property_type']),
             models.Index(fields=['price']),
-            models.Index(fields=['slug']), # Useful for direct lookups by slug
-            models.Index(fields=['video_processing_status']), # Useful for filtering properties by video status
+            models.Index(fields=['slug']),
         ]
 
     def __str__(self):
@@ -71,10 +54,10 @@ class Property(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            base_slug = slugify(self.title) # Generate slug from title
+            base_slug = slugify(self.title)
             slug = base_slug
             counter = 1
-            while Property.objects.filter(slug=slug).exclude(pk=self.pk).exists(): # Exclude current instance for updates
+            while Property.objects.filter(slug=slug).exclude(pk=self.pk).exists():
                 slug = f"{base_slug}-{counter}"
                 counter += 1
             self.slug = slug
@@ -91,18 +74,18 @@ class Property(models.Model):
             logger.info(f"Calculated payment amount: {payment_amount} TZS for property {self.id}")
             payment = Payment.objects.create(
                 user=self.owner,
-                amount=payment_amount, # Amount to be paid
+                amount=payment_amount,
                 status=Payment.PaymentStatus.PENDING,
                 content_type=ContentType.objects.get_for_model(Property),
                 object_id=self.id,
                 payment_type=Payment.PaymentType.ESTATE,
-                service=None # Estate activation is not tied to a specific PaymentService
+                service=None
             )
             logger.info(f"Created payment {payment.id} for property {self.id}, amount: {payment_amount} TZS")
             try:
                 payment.process_payment()
                 self.is_available = True
-                self.save(update_fields=['is_available', 'updated_at']) # Only update these fields for efficiency
+                self.save(update_fields=['is_available', 'updated_at'])
                 logger.info(f"Property {self.id} activated via wallet for user {self.owner.username}, amount: {payment_amount} TZS. Status: {payment.status}")
             except ValidationError as e:
                 logger.error(f"Property activation failed for property {self.id}: {str(e)}")

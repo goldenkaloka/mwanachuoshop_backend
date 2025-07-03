@@ -265,17 +265,17 @@ url = urlparse(redis_url)
 
 Q_CLUSTER = {
     'name': 'VideoProcessingCluster',
-    'workers': 4,  # Adjust based on server CPU cores (e.g., 1-2 for dev, 4-8 for prod)
+    'workers': 2,  # Reduced for production stability
     'recycle': 500,  # Restart workers after 500 tasks
-    'retry': 60 * 31,  # Retry after 31 minutes
-    'timeout': 60 * 30,  # Timeout after 30 minutes
+    'retry': 60 * 5,  # Retry after 5 minutes (reduced from 31)
+    'timeout': 60 * 15,  # Timeout after 15 minutes (reduced from 30)
     'compress': True,  # Compress task data
     'save_limit': 250,  # Keep last 250 tasks for monitoring
-    'queue_limit': 100,  # Max 100 tasks in queue
+    'queue_limit': 50,  # Reduced queue limit
     'cpu_affinity': 1,  # Bind each worker to 1 CPU core
     'label': 'Video Processing',
-    # Use ORM for development; comment out Redis
-    #'orm': 'default',  # SQLite for development
+    'catch_up': False,  # Don't catch up on missed tasks
+    'sync': False,  # Async mode
     'redis': {
         'host': url.hostname,
         'port': url.port,
@@ -283,6 +283,9 @@ Q_CLUSTER = {
         'username': url.username or None,
         'password': url.password or None,
         'ssl': url.scheme == 'rediss',
+        'socket_connect_timeout': 10,
+        'socket_timeout': 10,
+        'retry_on_timeout': True,
     },
 }
 
