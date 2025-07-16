@@ -23,6 +23,8 @@ from shops.models import Shop, Subscription, UserOffer
 from marketplace.models import Brand, Product
 from estates.models import Property
 from django_pesapalv3.views import PaymentRequestMixin
+from drf_spectacular.utils import extend_schema, OpenApiExample, OpenApiResponse, OpenApiParameter
+from rest_framework import serializers
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +120,16 @@ class WalletViewSet(viewsets.ModelViewSet):
             return Response({"error": f"Internal server error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=['get'], url_path='check-payment-status/(?P<transaction_id>[^/.]+)')
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="transaction_id",
+                type=str,
+                location=OpenApiParameter.PATH,
+                description="Transaction ID for the wallet payment."
+            )
+        ]
+    )
     def check_payment_status(self, request, transaction_id):
         """Check the status of a Pesapal v3 payment."""
         logger.debug(f"Checking payment status for transaction_id: {transaction_id}")
@@ -179,6 +191,51 @@ class WalletViewSet(viewsets.ModelViewSet):
             logger.error(f"Order status check error: {str(e)}\nTraceback: {traceback.format_exc()}")
             return Response({"error": f"Internal server error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class ProductPaymentRequestSerializer(serializers.Serializer):
+    product_id = serializers.IntegerField()
+
+class ProductPaymentResponseSerializer(serializers.Serializer):
+    detail = serializers.CharField(required=False)
+    product_id = serializers.IntegerField(required=False)
+    is_active = serializers.BooleanField(required=False)
+    free_products_remaining = serializers.IntegerField(required=False)
+    error = serializers.CharField(required=False)
+
+@extend_schema(
+    request=ProductPaymentRequestSerializer,
+    responses={
+        200: ProductPaymentResponseSerializer,
+        400: ProductPaymentResponseSerializer,
+        404: ProductPaymentResponseSerializer,
+        500: ProductPaymentResponseSerializer,
+    },
+    examples=[
+        OpenApiExample(
+            'Success',
+            value={
+                'detail': 'Product activated.',
+                'product_id': 1,
+                'is_active': True,
+                'free_products_remaining': 4
+            },
+            response_only=True
+        ),
+        OpenApiExample(
+            'Already Active',
+            value={
+                'detail': 'Product already active.'
+            },
+            response_only=True
+        ),
+        OpenApiExample(
+            'Error',
+            value={
+                'error': 'Product ID is required.'
+            },
+            response_only=True
+        )
+    ]
+)
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_product_payment(request):
@@ -229,6 +286,26 @@ def create_product_payment(request):
         logger.error(f"Unexpected error during product activation {product_id}: {str(e)}")
         return Response({"error": "Activation failed."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class EstatePaymentRequestSerializer(serializers.Serializer):
+    property_id = serializers.IntegerField()
+
+class EstatePaymentResponseSerializer(serializers.Serializer):
+    detail = serializers.CharField(required=False)
+    property_id = serializers.IntegerField(required=False)
+    is_available = serializers.BooleanField(required=False)
+    free_estates_remaining = serializers.IntegerField(required=False)
+    deposit_url = serializers.CharField(required=False)
+    error = serializers.CharField(required=False)
+
+@extend_schema(
+    request=EstatePaymentRequestSerializer,
+    responses={
+        200: EstatePaymentResponseSerializer,
+        400: EstatePaymentResponseSerializer,
+        404: EstatePaymentResponseSerializer,
+    },
+    description="Create a payment for an estate."
+)
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_estate_payment(request):
@@ -286,6 +363,51 @@ def create_estate_payment(request):
         logger.error(f"Unexpected error during property activation {property_id}: {str(e)}")
         return Response({"error": "Activation failed."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class ShopSubscriptionPaymentRequestSerializer(serializers.Serializer):
+    shop_id = serializers.IntegerField()
+
+class ShopSubscriptionPaymentResponseSerializer(serializers.Serializer):
+    detail = serializers.CharField(required=False)
+    shop_id = serializers.IntegerField(required=False)
+    subscription_status = serializers.CharField(required=False)
+    end_date = serializers.DateTimeField(required=False)
+    error = serializers.CharField(required=False)
+
+@extend_schema(
+    request=ShopSubscriptionPaymentRequestSerializer,
+    responses={
+        200: ShopSubscriptionPaymentResponseSerializer,
+        400: ShopSubscriptionPaymentResponseSerializer,
+        404: ShopSubscriptionPaymentResponseSerializer,
+        500: ShopSubscriptionPaymentResponseSerializer,
+    },
+    examples=[
+        OpenApiExample(
+            'Success',
+            value={
+                'detail': 'Subscription activated.',
+                'shop_id': 1,
+                'subscription_status': 'active',
+                'end_date': '2025-08-01T12:00:00Z'
+            },
+            response_only=True
+        ),
+        OpenApiExample(
+            'Already Active',
+            value={
+                'detail': 'Subscription already active.'
+            },
+            response_only=True
+        ),
+        OpenApiExample(
+            'Error',
+            value={
+                'error': 'Shop ID is required.'
+            },
+            response_only=True
+        )
+    ]
+)
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_shop_subscription_payment(request):
@@ -340,6 +462,25 @@ def create_shop_subscription_payment(request):
         logger.error(f"Unexpected error during subscription activation for shop {shop_id}: {str(e)}")
         return Response({"error": "Activation failed."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class BrandPaymentRequestSerializer(serializers.Serializer):
+    brand_id = serializers.IntegerField()
+
+class BrandPaymentResponseSerializer(serializers.Serializer):
+    detail = serializers.CharField(required=False)
+    brand_id = serializers.IntegerField(required=False)
+    is_active = serializers.BooleanField(required=False)
+    free_brands_remaining = serializers.IntegerField(required=False)
+    error = serializers.CharField(required=False)
+
+@extend_schema(
+    request=BrandPaymentRequestSerializer,
+    responses={
+        200: BrandPaymentResponseSerializer,
+        400: BrandPaymentResponseSerializer,
+        404: BrandPaymentResponseSerializer,
+    },
+    description="Create a payment for a brand."
+)
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_brand_payment(request):
@@ -386,6 +527,11 @@ def create_brand_payment(request):
         logger.error(f"Unexpected error during brand activation {brand_id}: {str(e)}")
         return Response({"error": "Activation failed."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+@extend_schema(
+    request=None,
+    responses={200: OpenApiResponse(description="Pesapal callback received.")},
+    description="Pesapal payment callback endpoint."
+)
 @csrf_exempt
 @api_view(['POST', 'GET'])
 @permission_classes([AllowAny])

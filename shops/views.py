@@ -15,6 +15,9 @@ from django.contrib.contenttypes.models import ContentType
 from payments.models import PaymentService
 from decimal import Decimal
 from django.core.exceptions import ValidationError
+# Location logic now handled by frontend - simplified approach
+from django.contrib.gis.geos import Point
+from drf_spectacular.utils import extend_schema
 
 logger = logging.getLogger(__name__)
 
@@ -61,16 +64,12 @@ class ShopViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerWithActiveSubscriptionOrReadOnly]
 
     def get_queryset(self):
-        """
-        Return shops based on user authentication and subscription status.
-        - Unauthenticated users: Only active shops (with active subscriptions).
-        - Authenticated non-staff: Their own shops (active or inactive) plus other active shops.
-        - Staff: All shops.
-        """
-        queryset = Shop.objects.select_related('user', 'subscription').prefetch_related(
+        queryset = Shop.objects.select_related('user', 'subscription', 'campus').prefetch_related(
             'media', 'services', 'promotions', 'events'
         )
         now = timezone.now()
+        # Remove all query param handling for lat/lng
+        # Use only campus for all proximity/location logic
         if not self.request.user.is_authenticated:
             queryset = queryset.filter(
                 subscription__status=Subscription.Status.ACTIVE,
@@ -91,7 +90,15 @@ class ShopViewSet(viewsets.ModelViewSet):
         """
         with transaction.atomic():
             shop = serializer.save(user=self.request.user)
-            logger.info(f"Created shop {shop.id} for user {self.request.user.username}")
+            
+            # Simple location assignment - use provided location or fallback
+            if not shop.location:
+                # Fallback to Dar es Salaam center if no location provided
+                shop.location = Point(-6.8235, 39.2695)
+                shop.save(update_fields=['location'])
+                logger.info(f"Shop {shop.id} assigned fallback coordinates - no location provided")
+
+            logger.info(f"Shop {shop.id} created successfully")
 
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def my_shop(self, request):
@@ -152,6 +159,10 @@ class SubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         return Subscription.objects.filter(user=self.request.user).select_related('shop')
 
+    @extend_schema(
+        responses={200: SubscriptionSerializer},
+        description="Extend the subscription duration for the authenticated user's shop by 1 month via wallet payment."
+    )
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def extend(self, request, pk=None):
         """

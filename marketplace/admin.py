@@ -1,6 +1,8 @@
 from django.contrib import admin
-from .models import Category, Brand, Attribute, AttributeValue, Product, ProductImage, WhatsAppClick
+from unfold.admin import ModelAdmin
 from mptt.admin import MPTTModelAdmin
+
+from .models import Category, Brand, Attribute, AttributeValue, Product, ProductImage, WhatsAppClick
 
 @admin.register(Category)
 class CategoryAdmin(MPTTModelAdmin):
@@ -10,56 +12,64 @@ class CategoryAdmin(MPTTModelAdmin):
     mptt_level_indent = 20
 
 @admin.register(Brand)
-class BrandAdmin(admin.ModelAdmin):
-    list_display = ('name', 'created_by', 'is_active')
+class BrandAdmin(ModelAdmin):
+    list_display = ('name', 'is_active')
     list_filter = ('is_active',)
     search_fields = ('name',)
-    filter_horizontal = ('categories',)
-    list_select_related = ('created_by',)
 
 @admin.register(Attribute)
-class AttributeAdmin(admin.ModelAdmin):
+class AttributeAdmin(ModelAdmin):
     list_display = ('name',)
     search_fields = ('name',)
 
 @admin.register(AttributeValue)
-class AttributeValueAdmin(admin.ModelAdmin):
-    list_display = ('attribute', 'category', 'value')
+class AttributeValueAdmin(ModelAdmin):
+    list_display = ('value', 'attribute', 'category')
     list_filter = ('attribute', 'category')
-    search_fields = ('value',)
-    list_select_related = ('attribute', 'category')
+    search_fields = ('value', 'attribute__name', 'category__name')
 
 @admin.register(Product)
-class ProductAdmin(admin.ModelAdmin):
-    list_display = ('name', 'brand', 'category', 'owner', 'shop', 'price', 'condition', 'is_active', 'created_at')
-    list_filter = ('is_active', 'condition', 'brand', 'category', 'shop')
-    search_fields = ('name', 'description')
-    list_select_related = ('brand', 'category', 'owner', 'shop')
-    filter_horizontal = ('attribute_values',)
-    date_hierarchy = 'created_at'
-    actions = ['activate_selected_products']
+class ProductAdmin(ModelAdmin):
+    list_display = ('name', 'shop', 'is_active', 'get_campuses')
+    search_fields = ('name',)
+    list_filter = ('is_active',)
+    default_lon = 39.2  # Example: Dar es Salaam
+    default_lat = -6.8
+    default_zoom = 6
+    readonly_fields = ('created_at', 'updated_at')
     
-    def activate_selected_products(self, request, queryset):
-        for product in queryset:
-            if not product.is_active:
-                try:
-                    product.activate_product()
-                    self.message_user(request, f"Successfully activated {product.name}")
-                except Exception as e:
-                    self.message_user(request, f"Failed to activate {product.name}: {str(e)}", level='error')
-    activate_selected_products.short_description = "Activate selected products"
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('name', 'description', 'owner', 'brand', 'category', 'price', 'condition', 'campus')
+        }),
+        ('Location Information', {
+            'fields': ()
+        }),
+        ('Shop Information', {
+            'fields': ('shop',)
+        }),
+        ('Status', {
+            'fields': ('is_active',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def get_campuses(self, obj):
+        return ", ".join([c.name for c in obj.campus.all()])
+    get_campuses.short_description = 'Campuses'
 
 @admin.register(ProductImage)
-class ProductImageAdmin(admin.ModelAdmin):
+class ProductImageAdmin(ModelAdmin):
     list_display = ('product', 'is_primary')
     list_filter = ('is_primary',)
     search_fields = ('product__name',)
-    list_select_related = ('product',)
 
 @admin.register(WhatsAppClick)
-class WhatsAppClickAdmin(admin.ModelAdmin):
-    list_display = ('product', 'user', 'clicked_at', 'ip_address')
+class WhatsAppClickAdmin(ModelAdmin):
+    list_display = ('product', 'user', 'clicked_at')
     list_filter = ('clicked_at',)
     search_fields = ('product__name', 'user__username')
-    date_hierarchy = 'clicked_at'
-    list_select_related = ('product', 'user')
+    readonly_fields = ('clicked_at',)

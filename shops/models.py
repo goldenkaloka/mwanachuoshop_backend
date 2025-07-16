@@ -10,6 +10,8 @@ from payments.models import Payment, PaymentService
 from django.contrib.contenttypes.models import ContentType
 from decimal import Decimal
 from django.core.exceptions import ValidationError
+from core.models import University, Campus
+from django.contrib.gis.db import models as gis_models
 
 logger = logging.getLogger(__name__)
 
@@ -18,11 +20,10 @@ class Shop(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='shop')
     name = models.CharField(max_length=255)
     phone = PhoneNumberField(region='TZ')
-    location = models.CharField(max_length=255)
+    campus = models.ForeignKey(Campus, on_delete=models.SET_NULL, related_name='shops', null=True, blank=True)
     description = models.TextField()
     operating_hours = models.JSONField(default=dict)
     social_media = models.JSONField(blank=True, null=True)
-    university_partner = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=False)
@@ -32,6 +33,12 @@ class Shop(models.Model):
             models.Index(fields=['user']),
             models.Index(fields=['is_active']),
         ]
+
+    def clean(self):
+        if not self.name:
+            raise ValidationError("Shop name cannot be empty.")
+        if not self.description:
+            raise ValidationError("Shop description cannot be empty.")
 
     def is_subscription_active(self):
         """Check if the shop has an active subscription."""

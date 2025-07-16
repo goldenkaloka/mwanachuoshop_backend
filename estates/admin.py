@@ -1,4 +1,5 @@
 from django.contrib import admin
+from unfold.admin import ModelAdmin
 from django.utils.html import format_html
 from django.urls import reverse
 from django.contrib.contenttypes.models import ContentType
@@ -6,6 +7,7 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.db import transaction
 import logging
+
 
 from .models import Property, PropertyType, PropertyImage
 from payments.models import Payment
@@ -27,7 +29,7 @@ class PropertyImageInline(admin.TabularInline):
 
 # Admin for PropertyType
 @admin.register(PropertyType)
-class PropertyTypeAdmin(admin.ModelAdmin):
+class PropertyTypeAdmin(ModelAdmin):
     list_display = ('name',)
     search_fields = ('name',)
     ordering = ('name',)
@@ -40,10 +42,13 @@ class PropertyTypeAdmin(admin.ModelAdmin):
 
 # Admin for Property
 @admin.register(Property)
-class PropertyAdmin(admin.ModelAdmin):
-    list_display = ('title', 'owner', 'location', 'property_type', 'price', 'is_available', 'created_at')
-    list_filter = ('is_available', 'property_type', 'created_at')
-    search_fields = ('title', 'location', 'owner__username', 'owner__email')
+class PropertyAdmin(ModelAdmin):
+    list_display = ('title', 'is_available', 'location', 'campus_display')
+    search_fields = ('title', 'location')
+    list_filter = ('is_available', 'campus', 'property_type')
+    default_lon = 39.2
+    default_lat = -6.8
+    default_zoom = 6
     readonly_fields = ('slug', 'created_at', 'updated_at')
     inlines = [PropertyImageInline]
     actions = ['activate_properties', 'deactivate_properties']
@@ -52,9 +57,17 @@ class PropertyAdmin(admin.ModelAdmin):
             'fields': ('owner', 'property_type', 'title', 'slug', 'location', 'price', 'is_available')
         }),
         ('Details', {
-            'fields': ('features',)
+            'fields': ('features', 'campus')
         }),
     )
+
+    def campus_display(self, obj):
+        """Display campuses as a comma-separated list"""
+        campuses = obj.campus.all()
+        if campuses:
+            return ', '.join([campus.name for campus in campuses])
+        return "No campus selected"
+    campus_display.short_description = 'Campuses'
 
     def activate_properties(self, request, queryset):
         """Bulk activate properties by processing payments."""
@@ -80,7 +93,7 @@ class PropertyAdmin(admin.ModelAdmin):
 
 # Admin for PropertyImage
 @admin.register(PropertyImage)
-class PropertyImageAdmin(admin.ModelAdmin):
+class PropertyImageAdmin(ModelAdmin):
     list_display = ('property', 'is_primary', 'created_at', 'image_preview')
     list_filter = ('is_primary', 'created_at')
     search_fields = ('property__title', 'property__location')

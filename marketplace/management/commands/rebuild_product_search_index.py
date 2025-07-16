@@ -19,4 +19,4 @@ class Command(BaseCommand):
         )
         
         self.stdout.write(self.style.SUCCESS('Successfully rebuilt product search index.'))
-        self.stdout.write(self.style.WARNING('Consider running this periodically (e.g., via Celery) to keep the index up-to-date.'))
+        self.stdout.write(self.style.WARNING('Consider running this periodically (e.g., via Django Q) to keep the index up-to-date.'))

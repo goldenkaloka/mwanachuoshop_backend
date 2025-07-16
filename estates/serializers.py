@@ -4,6 +4,7 @@ from django.urls import reverse
 from decimal import Decimal
 from .models import Property, PropertyImage, PropertyType
 from users.models import NewUser, Profile
+from core.models import University, Campus
 from dj_rest_auth.serializers import UserDetailsSerializer
 import os
 from cloudflare import Cloudflare
@@ -31,6 +32,7 @@ class CustomUserDetailsSerializer(UserDetailsSerializer):
     profile_image = serializers.ImageField(source='profile.image', read_only=True, allow_null=True)
 
     class Meta(UserDetailsSerializer.Meta):
+        ref_name = "EstatesAppCustomUserDetails"
         model = NewUser
         fields = UserDetailsSerializer.Meta.fields + (
             'phonenumber',
@@ -52,6 +54,7 @@ class ProfileSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
 class PropertySerializer(serializers.ModelSerializer):
+    campus = serializers.PrimaryKeyRelatedField(queryset=Campus.objects.all(), many=True, required=False)
     owner = CustomUserDetailsSerializer(read_only=True, default=serializers.CurrentUserDefault())
     property_type = PropertyTypeSerializer(read_only=True)
     property_type_id = serializers.PrimaryKeyRelatedField(
@@ -66,13 +69,6 @@ class PropertySerializer(serializers.ModelSerializer):
         required=False,
         help_text="Upload multiple images at once."
     )
-
-    title = serializers.CharField(max_length=100, required=True)
-    features = serializers.CharField(required=True)
-    location = serializers.CharField(max_length=100, required=True)
-    price = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal('1.00'), required=True)
-    is_available = serializers.BooleanField(default=True)
-
     class Meta:
         model = Property
         fields = [
@@ -84,6 +80,7 @@ class PropertySerializer(serializers.ModelSerializer):
             'slug',
             'features',
             'location',
+            'campus',
             'price',
             'is_available',
             'created_at',

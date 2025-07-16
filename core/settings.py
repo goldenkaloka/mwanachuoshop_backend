@@ -3,6 +3,12 @@ import os
 from pathlib import Path
 from datetime import timedelta
 import environ
+try:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+except ImportError:
+    sentry_sdk = None
+    DjangoIntegration = None
 
 # Import ZenoPay for payment integration
 import dj_database_url
@@ -11,21 +17,20 @@ from zenopay import ZenoPay  # Adjust the import path if necessary
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# django-environ setup
-env = environ.Env(
-    DEBUG=(bool, False)
-)
-environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
+# Remove django-environ setup
+# env = environ.Env(
+#     DEBUG=(bool, False)
+# )
+# environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
-SECRET_KEY = env('SECRET_KEY')
-DEBUG = env('DEBUG')
+SECRET_KEY = os.getenv('SECRET_KEY', 'your-default-secret-key')
+DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes')
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
 
 # Application definition
 INSTALLED_APPS = [
-    'mptt',
-    'jazzmin',
+    'unfold',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -33,6 +38,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.sites',
+    # 'django.contrib.gis',  # Commented out - using simplified location system
+    'core',  # Add core app for University and Location models
     'users',
     'marketplace',
     'corsheaders',
@@ -53,13 +60,14 @@ INSTALLED_APPS = [
     'django_q',
     'drf_spectacular',
     'django_extensions',
-    'video_transcoding',
+
     'storages',
     'django_pesapal',
     'django_pesapalv3',
-    "debug_toolbar",
     'allauth.socialaccount.providers.google', 
     'allauth.socialaccount.providers.apple', 
+    'dashboard',
+    'django.contrib.gis',
 ]
 
 MIDDLEWARE = [
@@ -73,8 +81,31 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
-     "debug_toolbar.middleware.DebugToolbarMiddleware",
 ]
+
+# Add CSP and security headers for production
+if not DEBUG:
+    MIDDLEWARE.insert(1, 'csp.middleware.CSPMiddleware')
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_REFERRER_POLICY = 'same-origin'
+    # Content Security Policy
+    CSP_DEFAULT_SRC = ("'self'",)
+    CSP_SCRIPT_SRC = ("'self'", 'https://cdn.jsdelivr.net')
+    CSP_STYLE_SRC = ("'self'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net')
+    CSP_FONT_SRC = ("'self'", 'https://fonts.gstatic.com')
+    CSP_IMG_SRC = ("'self'", 'data:', 'https://*')
+    CSP_CONNECT_SRC = ("'self'", 'https://*')
+    CSP_FRAME_SRC = ("'self'",)
+    CSP_OBJECT_SRC = ("'none'",)
+    CSP_BASE_URI = ("'self'",)
+    CSP_FORM_ACTION = ("'self'",)
 
 ROOT_URLCONF = 'core.urls'
 SITE_ID = 1
@@ -99,28 +130,33 @@ WSGI_APPLICATION = 'core.wsgi.application'
 
 
 
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.contrib.gis.db.backends.postgis',
+        'NAME': 'mwanachuoshop',
+        'USER': 'mwanachuouser',
+        'PASSWORD': 'mwanachuopass',
+        'HOST': 'db',
+        'PORT': '5432',
+    }
+}
+
+# # Database configuration for Render PostgreSQL
 # DATABASES = {
 #     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'mwanachuoshop_database',
+#         'USER': 'mwanachuoshop_database_user',
+#         'PASSWORD': '1AW0GCZL5u6ugISSVtJiODVJmPgvvnFw',
+#         'HOST': 'dpg-d1hhpjndiees73bdmehg-a.oregon-postgres.render.com',  # Internal hostname for Render
+#         'PORT': '5432',
+#         'CONN_MAX_AGE': 600,  # Keep connections alive for 10 minutes
+#         'OPTIONS': {
+#             'connect_timeout': 10,  # Timeout after 10 seconds
+#         },
 #     }
 # }
 
-# Database configuration for Render PostgreSQL
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'mwanachuoshop_database',
-        'USER': 'mwanachuoshop_database_user',
-        'PASSWORD': '1AW0GCZL5u6ugISSVtJiODVJmPgvvnFw',
-        'HOST': 'dpg-d1hhpjndiees73bdmehg-a.oregon-postgres.render.com',  # Internal hostname for Render
-        'PORT': '5432',
-        'CONN_MAX_AGE': 600,  # Keep connections alive for 10 minutes
-        'OPTIONS': {
-            'connect_timeout': 10,  # Timeout after 10 seconds
-        },
-    }
-}
 
 
 AWS_ACCESS_KEY_ID = os.getenv('CLOUDFLARE_R2_ACCESS_KEY_ID', 'c02e50bd8f808ebea69917e8a475c2a4')
@@ -138,12 +174,12 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
-MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
+MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Cloudflare Stream configuration
-CLOUDFLARE_ACCOUNT_ID = '34b85ecebdccd8f57b5414d007372647'
-CLOUDFLARE_STREAM_API_TOKEN = 'HKvNOwsjv5hfTXeB3cdsKqUsPf0moHNkuvW-XNgO'
+CLOUDFLARE_ACCOUNT_ID = os.getenv('CLOUDFLARE_ACCOUNT_ID', '34b85ecebdccd8f57b5414d007372647')
+CLOUDFLARE_STREAM_API_TOKEN = os.getenv('CLOUDFLARE_STREAM_API_TOKEN', 'HKvNOwsjv5hfTXeB3cdsKqUsPf0moHNkuvW-XNgO')
 CLOUDFLARE_STREAM_API_BASE_URL = os.getenv('CLOUDFLARE_STREAM_API_BASE_URL', 'https://api.cloudflare.com/client/v4')
 
 # Email configuration for Gmail SMTP
@@ -151,9 +187,12 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = env('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
-DEFAULT_FROM_EMAIL = env('EMAIL_HOST_USER')
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+# Custom User Model
+AUTH_USER_MODEL = 'users.NewUser'
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -167,12 +206,7 @@ AUTH_PASSWORD_VALIDATORS = [
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'Africa/Dar_es_Salaam'
 USE_I18N = True
-USE_TZ = True
-
-# # Static files
-# STATIC_URL = '/static/'
-# STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-# STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+USE_TZ = TruTICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 # STATICFILES_FINDERS = [
 #     'django.contrib.staticfiles.finders.FileSystemFinder',
 #     'django.contrib.staticfiles.finders.AppDirectoriesFinder',
@@ -184,91 +218,39 @@ USE_TZ = True
 # os.makedirs(HLS_OUTPUT_DIR, exist_ok=True)
 # os.makedirs(THUMBNAIL_DIR, exist_ok=True)
 
-CORS_ALLOW_ALL_ORIGINS = True
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-AUTH_USER_MODEL = 'users.NewUser' 
-SOCIALACCOUNT_STORE_TOKENS = True
-
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ),
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',
-    ],
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
-}
-
-REST_AUTH = {
-    'USE_JWT': True,
-    'OLD_PASSWORD_FIELD_ENABLED': True,
-    'LOGOUT_ON_PASSWORD_CHANGE': True,
-    'REGISTER_SERIALIZER': 'users.serializers.CustomRegisterSerializer',
-    'USER_DETAILS_SERIALIZER': 'users.serializers.CustomUserDetailsSerializer',
-    'JWT_AUTH_COOKIE': 'access_token',  # Name of access token cookie
-    'JWT_AUTH_REFRESH_COOKIE': 'refresh_token',  # Name of refresh token cookie
-    'JWT_AUTH_HTTPONLY': True,  # Enable HTTP-only cookies
-    'JWT_AUTH_SAMESITE': 'Strict'
-}
-
-
-SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=4),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
-    'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True,
-    'UPDATE_LAST_LOGIN': True,
-}
-
-# Allauth settings
-ACCOUNT_USER_MODEL_USERNAME_FIELD = 'username'
-ACCOUNT_UNIQUE_EMAIL = True
-ACCOUNT_EMAIL_VERIFICATION = 'optional'
-ACCOUNT_LOGIN_METHODS = {'email'}
-ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
-SOCIALACCOUNT_ADAPTER = 'users.adapters.CustomSocialAccountAdapter'
-
-# Redirect to React frontend after social login
-# The following URL is overridden by our custom adapter's get_login_redirect_url method
-# SOCIALACCOUNT_LOGIN_REDIRECT_URL = 'http://localhost:8080/dashboard'
-LOGIN_REDIRECT_URL = 'http://localhost:8080/dashboard'
-SOCIALACCOUNT_LOGIN_ON_GET = True  
-
-FRONTEND_URL = env('FRONTEND_URL')
-
 # --- CORS (Cross-Origin Resource Sharing) settings ---
 
-# For development, allowing all origins is convenient.
-# WARNING: This is insecure for production. Set to False when using CORS_ALLOWED_ORIGINS.
+# For development, allow all origins
+CORS_ALLOW_ALL_ORIGINS = True
 
+# For production, use the following and set CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+    # Add your production frontend domain(s) here
+]
 
-# For a secure production environment, you should replace CORS_ALLOW_ALL_ORIGINS = True
-# with a specific list of allowed domains.
-# CORS_ALLOWED_ORIGINS = [
-#     os.getenv('FRONTEND_URL', 'http://localhost:8080'),
-#     'https://master-relevant-flounder.ngrok-free.app',
-#     # Add your production frontend domain here, e.g., 'https://www.mwanachuoshop.com'
-# ]
-
-# This is crucial for allowing the frontend to send credentials (like cookies or auth headers).
 CORS_ALLOW_CREDENTIALS = True
 
-CSRF_TRUSTED_ORIGINS = ['https://master-relevant-flounder.ngrok-free.app', env('FRONTEND_URL')]
+CSRF_TRUSTED_ORIGINS = [
+    'https://master-relevant-flounder.ngrok-free.app',
+    os.getenv('FRONTEND_URL', 'http://localhost:8080')
+]
 
 # Pesapal settings
-PESAPAL_DEMO = env.bool('PESAPAL_DEMO', default=True)
-PESAPAL_CONSUMER_KEY = env('PESAPAL_CONSUMER_KEY')
-PESAPAL_CONSUMER_SECRET = env('PESAPAL_CONSUMER_SECRET')
+PESAPAL_DEMO = os.getenv('PESAPAL_DEMO', 'True').lower() in ('true', '1', 'yes')
+PESAPAL_CONSUMER_KEY = os.getenv('PESAPAL_CONSUMER_KEY', '')
+PESAPAL_CONSUMER_SECRET = os.getenv('PESAPAL_CONSUMER_SECRET', '')
 # The IPN URL you register on your Pesapal merchant dashboard.
 # Example: 'https://master-relevant-flounder.ngrok-free.app/v3/payments/callback/pesapal/'
-PESAPAL_NOTIFICATION_ID = env('PESAPAL_NOTIFICATION_ID')
-PESAPAL_CALLBACK_URL = env('PESAPAL_CALLBACK_URL')
+PESAPAL_NOTIFICATION_ID = os.getenv('PESAPAL_NOTIFICATION_ID', '')
+PESAPAL_CALLBACK_URL = os.getenv('PESAPAL_CALLBACK_URL', '')
 PESAPAL_TRANSACTION_DEFAULT_REDIRECT_URL = 'http://localhost:3000/wallet/success'  # Frontend success page
 PESAPAL_ALLOWED_IPS = []  # Disable IP restrictions for testing
 PESAPAL_API_URL = 'https://cybqa.pesapal.com/pesapalv3/api' if PESAPAL_DEMO else 'https://pay.pesapal.com/v3/api'
 
 # Parse Redis URL from environment
-redis_url = env('REDIS_URL', default='redis://localhost:6379/0')
+redis_url = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 from urllib.parse import urlparse
 url = urlparse(redis_url)
 
@@ -299,88 +281,8 @@ Q_CLUSTER = {
 }
 
 
-# Jazzmin settings (unchanged)
-JAZZMIN_SETTINGS = {
-    'site_title': 'Mwanachuoshop',
-    'site_header': 'Mwanachuoshop admin',
-    'site_brand': 'Mwanachuoshop',
-    'welcome_sign': 'Welcome to Mwanachuoshop admin panel',
-    'copyright': 'Mwanachuoshop Ltd',
-    'search_model': ['products.Product', 'auth.User'],
-    'show_ui_builder': True,
-    'navigation_expanded': True,
-    'icons': {
-        'auth.user': 'fas fa-user',
-        'auth.Group': 'fas fa-users',
-        'products.Product': 'fas fa-box',
-        'products.Category': 'fas fa-tags',
-        'products.Brand': 'fas fa-copyright',
-        'products.Attribute': 'fas fa-list',
-        'products.AttributeValue': 'fas fa-list-alt',
-        'products.ProductImage': 'fas fa-image',
-        'products.WhatsAppClick': 'fas fa-whatsapp',
-    },
-    'topmenu_links': [
-        {'name': 'Home', 'url': 'admin:index', 'permissions': ['auth.view_user']},
-        {'name': 'Support', 'url': 'https://github.com/farridav/django-jazzmin/issues', 'new_window': True},
-        {'model': 'auth.User'},
-        {'app': 'products'},
-    ],
-    'usermenu_links': [
-        {'name': 'Support', 'url': 'https://github.com/farridav/django-jazzmin/issues', 'new_window': True},
-        {'model': 'auth.user'},
-    ],
-    'theme': 'default',
-    'button_classes': {
-        'primary': 'btn-primary',
-        'secondary': 'btn-secondary',
-        'info': 'btn-info',
-        'warning': 'btn-warning',
-        'danger': 'btn-danger',
-        'success': 'btn-success',
-    },
-    'related_modal_active': False,
-    'show_sidebar': True,
-    'navigation_expanded': True,
-    'changeform_format': 'horizontal_tabs',
-    'changeform_format_overrides': {
-        'auth.user': 'collapsible',
-        'auth.group': 'vertical_tabs',
-    },
-    'language_chooser': False,
-}
 
-JAZZMIN_UI_TWEAKS = {
-    'navbar_small_text': False,
-    'footer_small_text': False,
-    'body_small_text': False,
-    'brand_small_text': False,
-    'brand_colour': 'navbar-primary',
-    'accent': 'accent-primary',
-    'navbar': 'navbar-white navbar-light',
-    'no_navbar_border': False,
-    'navbar_fixed': True,
-    'layout_boxed': False,
-    'footer_fixed': False,
-    'sidebar_fixed': True,
-    'sidebar': 'sidebar-dark-primary',
-    'sidebar_nav_small_text': False,
-    'sidebar_disable_expand': False,
-    'sidebar_nav_child_indent': False,
-    'sidebar_nav_compact_style': False,
-    'sidebar_nav_legacy_style': False,
-    'sidebar_nav_flat_style': False,
-    'theme': 'default',
-    'button_classes': {
-        'primary': 'btn-outline-primary',
-        'secondary': 'btn-outline-secondary',
-        'info': 'btn-outline-info',
-        'warning': 'btn-outline-warning',
-        'danger': 'btn-outline-danger',
-        'success': 'btn-outline-success',
-    },
-    'actions_sticky_top': False,
-}
+
 
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Mwanachuoshop API',
@@ -390,7 +292,7 @@ SPECTACULAR_SETTINGS = {
 }
 
 SHOP_TRIAL_DAYS = 30
-SHOP_TRIAL_MINUTES = 120
+# SHOP_TRIAL_MINUTES = 120  # Commented out to prevent DEBUG mode override
 USER_OFFER_DEFAULTS = {
     'free_products_remaining': 20,
     'free_estates_remaining': 5,
@@ -403,8 +305,8 @@ ZENOPAY_ALLOWED_IPS = ['203.0.113.1', '203.0.113.2']
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
         'APP': {
-            'client_id': env('GOOGLE_OAUTH_CLIENT_ID'),
-            'secret': env('GOOGLE_OAUTH_CLIENT_SECRET'),
+            'client_id': os.getenv('GOOGLE_OAUTH_CLIENT_ID'),
+            'secret': os.getenv('GOOGLE_OAUTH_CLIENT_SECRET'),
             'key': ''
         },
         'SCOPE': [
@@ -416,3 +318,147 @@ SOCIALACCOUNT_PROVIDERS = {
         }
     },
 }
+
+UNFOLD = {
+    "SITE_TITLE": "Mwanachuoshop Admin",
+    "SITE_HEADER": "Mwanachuoshop Admin",
+    "SHOW_HISTORY": True,
+    "SHOW_VIEW_ON_SITE": True,
+    "COLLAPSIBLE_NAV": True,
+    "SIDEBAR": {
+        "items": [
+            {"label": "Analytics", "url": "/admin/analytics/", "icon": "bar-chart"},
+            {"app": "users", "icon": "users"},
+            {"app": "shops", "icon": "shopping-bag"},
+            {"app": "marketplace", "icon": "package"},
+            {"app": "estates", "icon": "home"},
+            {"app": "payments", "icon": "credit-card"},
+            {"app": "core", "icon": "map-pin"},
+        ]
+    },
+}
+
+# Security: Add security headers
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+SECURE_HSTS_SECONDS = 31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+
+# Security: Fix default permissions
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'EXCEPTION_HANDLER': 'core.exception_handler.custom_exception_handler',
+}
+
+REST_AUTH = {
+    'USE_JWT': True,
+    'OLD_PASSWORD_FIELD_ENABLED': True,
+    'LOGOUT_ON_PASSWORD_CHANGE': True,
+    'REGISTER_SERIALIZER': 'users.serializers.CustomRegisterSerializer',
+    'USER_DETAILS_SERIALIZER': 'users.serializers.CustomUserDetailsSerializer',
+    'JWT_AUTH_COOKIE': 'access_token',  # Name of access token cookie
+    'JWT_AUTH_REFRESH_COOKIE': 'refresh_token',  # Name of refresh token cookie
+    'JWT_AUTH_HTTPONLY': True,  # Enable HTTP-only cookies
+    'JWT_AUTH_SAMESITE': 'Strict'
+}
+
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),  # Changed from 4 days
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'UPDATE_LAST_LOGIN': True,
+}
+
+# Allauth settings
+ACCOUNT_USER_MODEL_USERNAME_FIELD = 'username'
+ACCOUNT_UNIQUE_EMAIL = True
+ACCOUNT_EMAIL_VERIFICATION = 'optional'
+ACCOUNT_LOGIN_METHODS = {'email'}
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
+SOCIALACCOUNT_ADAPTER = 'users.adapters.CustomSocialAccountAdapter'
+
+# Redirect to React frontend after social login
+# The following URL is overridden by our custom adapter's get_login_redirect_url method
+# SOCIALACCOUNT_LOGIN_REDIRECT_URL = 'http://localhost:8080/dashboard'
+LOGIN_REDIRECT_URL = 'http://localhost:8080/dashboard'
+SOCIALACCOUNT_LOGIN_ON_GET = True  
+
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:8080')
+
+# Security: Disable debug toolbar in production
+if DEBUG:
+    INSTALLED_APPS.append('debug_toolbar')
+    MIDDLEWARE.append('debug_toolbar.middleware.DebugToolbarMiddleware')
+    INTERNAL_IPS = ['127.0.0.1']
+
+# Sentry integration
+SENTRY_DSN = os.getenv('SENTRY_DSN', None)
+SENTRY_ENVIRONMENT = os.getenv('SENTRY_ENVIRONMENT', 'development')
+if SENTRY_DSN and sentry_sdk:
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[DjangoIntegration()],
+        environment=SENTRY_ENVIRONMENT,
+        traces_sample_rate=0.2,
+        send_default_pii=True,
+    )
+
+# Structured logging for production
+import sys
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'json': {
+            '()': 'django.utils.log.ServerFormatter',
+            'format': '{"timestamp": "%(asctime)s", "level": "%(levelname)s", "name": "%(name)s", "message": %(message)s, "module": "%(module)s", "process": %(process)d, "thread": %(thread)d}',
+        },
+        'verbose': {
+            'format': '[%(asctime)s] %(levelname)s %(name)s %(message)s',
+        },
+        'simple': {
+            'format': '%(levelname)s %(message)s',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'stream': sys.stdout,
+            'formatter': 'json' if not DEBUG else 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'django.db.backends': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+    },
+}
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

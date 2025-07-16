@@ -9,16 +9,22 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404, reverse
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, permissions, status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.filters import SearchFilter
 from rest_framework.response import Response
+from rest_framework.exceptions import PermissionDenied
 from django_q.tasks import async_task
+from django.contrib.gis.geos import Point
+from django.contrib.gis.db.models.functions import Distance
+from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
+from rest_framework import serializers
 
 from estates.models import Property, PropertyImage, PropertyType
 from estates.serializers import PropertyImageSerializer, PropertySerializer, PropertyTypeSerializer
 from estates.pagination import StandardPagePagination
 from shops.models import UserOffer
 from payments.models import Payment
+from core.models import Campus
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +83,15 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 is_available=is_available
             )
 
+            # Simple location assignment - use provided location or fallback
+            if not instance.location:
+                # Fallback to Dar es Salaam center if no location provided
+                instance.location = Point(39.2695, -6.8235)
+                instance.save(update_fields=['location'])
+                logger.info(f"Property {instance.id} assigned fallback coordinates - no location provided")
+
+            logger.info(f"Property {instance.id} created successfully")
+
             if not is_available:
                 try:
                     instance.activate_property()
@@ -124,7 +139,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 ).exists()
                 if not (offer and offer.free_estates_remaining > 0) and not has_paid:
                     logger.error(f"User {user.username} attempted to set property {instance.id} is_available=True without offer or payment.")
-                    raise permissions.PermissionDenied("Free offer or payment required to make property available.")
+                    raise PermissionDenied("Free offer or payment required to make property available.")
             instance = serializer.save()
 
     def get_queryset(self):
@@ -135,7 +150,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
         
         if my_properties:
             if not self.request.user.is_authenticated:
-                raise permissions.PermissionDenied("Authentication required for user-specific properties.")
+                raise PermissionDenied("Authentication required for user-specific properties.")
             queryset = queryset.filter(owner=self.request.user)
         elif not self.request.user.is_staff:
             queryset = queryset.filter(is_available=True)
@@ -151,12 +166,40 @@ class PropertyViewSet(viewsets.ModelViewSet):
             except ValueError:
                 pass
         
-        return queryset.select_related('owner', 'property_type').prefetch_related('images')
+        return queryset.select_related('owner', 'property_type').prefetch_related('property_images')
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
         context['exclude_images'] = self.request.query_params.get('exclude_images', 'false').lower() == 'true'
         return context
+
+    @action(detail=False, methods=['get'])
+    def near_university(self, request):
+        campus_id = request.query_params.get('campus_id')
+        radius = float(request.query_params.get('radius', 5000))
+        if not campus_id:
+            return Response({'error': 'campus_id is required'}, status=400)
+        try:
+            campus = Campus.objects.get(id=campus_id)
+        except Campus.DoesNotExist:
+            return Response({'error': 'Campus not found'}, status=404)
+        estates = Property.objects.filter(campus=campus, location__isnull=False).annotate(
+            distance=Distance('location', campus.location)
+        ).filter(distance__lte=radius).order_by('distance')
+        serializer = self.get_serializer(estates, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def near_user(self, request):
+        user = request.user
+        radius = float(request.query_params.get('radius', 5000))
+        if not hasattr(user, 'location') or not user.location:
+            return Response({'error': 'User location not set'}, status=400)
+        estates = Property.objects.filter(location__isnull=False).annotate(
+            distance=Distance('location', user.location)
+        ).filter(distance__lte=radius).order_by('distance')
+        serializer = self.get_serializer(estates, many=True)
+        return Response(serializer.data)
 
 class PropertyImageViewSet(viewsets.ModelViewSet):
     queryset = PropertyImage.objects.all()
@@ -171,12 +214,56 @@ class PropertyImageViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         property_instance = serializer.validated_data.get('property')
         if property_instance.owner != self.request.user and not self.request.user.is_staff:
-            raise permissions.PermissionDenied("You can only add images to your own properties.")
+            raise PermissionDenied("You can only add images to your own properties.")
         serializer.save()
 
     def get_queryset(self):
         return super().get_queryset().select_related('property')
 
+class EstatePaymentRequestSerializer(serializers.Serializer):
+    property_id = serializers.IntegerField()
+
+class EstatePaymentResponseSerializer(serializers.Serializer):
+    detail = serializers.CharField()
+    property_id = serializers.IntegerField()
+    is_available = serializers.BooleanField()
+    free_estates_remaining = serializers.IntegerField(required=False)
+    deposit_url = serializers.CharField(required=False)
+    error = serializers.CharField(required=False)
+
+@extend_schema(
+    request=EstatePaymentRequestSerializer,
+    responses={
+        200: EstatePaymentResponseSerializer,
+        400: EstatePaymentResponseSerializer,
+        404: EstatePaymentResponseSerializer,
+        500: EstatePaymentResponseSerializer,
+    },
+    examples=[
+        OpenApiExample(
+            'Success',
+            value={
+                'detail': 'Property activated.',
+                'property_id': 1,
+                'is_available': True,
+                'free_estates_remaining': 4
+            },
+            response_only=True
+        ),
+        OpenApiExample(
+            'Deposit Required',
+            value={
+                'error': 'Insufficient funds',
+                'detail': 'Deposit required to activate property.',
+                'deposit_url': 'https://example.com/deposit',
+                'property_id': 1,
+                'is_available': False,
+                'free_estates_remaining': 0
+            },
+            response_only=True
+        )
+    ]
+)
 @api_view(['POST'])
 @permission_classes([permissions.IsAuthenticated])
 def create_estate_payment(request):

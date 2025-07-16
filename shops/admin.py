@@ -1,9 +1,11 @@
 from django.contrib import admin
+from unfold.admin import ModelAdmin
 from django.utils import timezone
 from datetime import timedelta
 from django.contrib.admin import SimpleListFilter
 import logging
 from .models import Shop, ShopMedia, Promotion, Event, Services, UserOffer, Subscription
+
 
 logger = logging.getLogger(__name__)
 
@@ -136,18 +138,21 @@ class ServicesInline(admin.TabularInline):
 
 # Admin Classes
 @admin.register(Shop)
-class ShopAdmin(admin.ModelAdmin):
-    list_display = ('name', 'user', 'phone', 'location', 'is_active', 'is_subscription_active', 'created_at')
-    list_filter = ('is_active', 'university_partner')
-    search_fields = ('name', 'user__username', 'user__email', 'phone', 'location')
+class ShopAdmin(ModelAdmin):
+    list_display = ('name', 'user', 'is_active', 'campus')
+    search_fields = ('name',)
+    list_filter = ('is_active',)
+    default_lon = 39.2
+    default_lat = -6.8
+    default_zoom = 6
     readonly_fields = ('created_at', 'updated_at', 'is_subscription_active')
     inlines = [ShopMediaInline, PromotionInline, EventInline, ServicesInline]
     fieldsets = (
         (None, {
-            'fields': ('user', 'name', 'phone', 'location', 'description')
+            'fields': ('user', 'name', 'phone', 'campus', 'description')
         }),
         ('Details', {
-            'fields': ('image', 'operating_hours', 'social_media', 'university_partner', 'is_active')
+            'fields': ('image', 'operating_hours', 'social_media', 'is_active')
         }),
         ('Timestamps', {
             'fields': ('created_at', 'updated_at', 'is_subscription_active')
@@ -173,51 +178,49 @@ class ShopAdmin(admin.ModelAdmin):
     reactivate_shop.short_description = "Reactivate selected shops with active subscriptions"
 
 @admin.register(ShopMedia)
-class ShopMediaAdmin(admin.ModelAdmin):
+class ShopMediaAdmin(ModelAdmin):
     list_display = ('shop', 'is_primary', 'image')
     list_filter = ('is_primary',)
     search_fields = ('shop__name',)
     readonly_fields = ('image',)
 
 @admin.register(Promotion)
-class PromotionAdmin(admin.ModelAdmin):
+class PromotionAdmin(ModelAdmin):
     list_display = ('title', 'shop', 'start_date', 'end_date', 'is_active')
     list_filter = (ActivePromotionFilter, 'start_date', 'end_date')
     search_fields = ('title', 'shop__name')
     readonly_fields = ('created_at', 'is_active')
 
 @admin.register(Event)
-class EventAdmin(admin.ModelAdmin):
+class EventAdmin(ModelAdmin):
     list_display = ('title', 'shop', 'start_time', 'end_time', 'is_free', 'is_active')
     list_filter = (ActiveEventFilter, 'is_free', 'start_time')
     search_fields = ('title', 'shop__name')
     readonly_fields = ('created_at', 'is_active')
 
 @admin.register(Services)
-class ServicesAdmin(admin.ModelAdmin):
+class ServicesAdmin(ModelAdmin):
     list_display = ('name', 'shop', 'price', 'duration', 'is_available')
     list_filter = (AvailableServicesFilter,)
     search_fields = ('name', 'shop__name')
     readonly_fields = ('created_at', 'is_available')
 
 @admin.register(UserOffer)
-class UserOfferAdmin(admin.ModelAdmin):
+class UserOfferAdmin(ModelAdmin):
     list_display = ('user', 'free_products_remaining', 'free_estates_remaining', 'created_at')
     search_fields = ('user__username', 'user__email')
     readonly_fields = ('created_at', 'updated_at')
     actions = ['reset_free_offers']
 
     def reset_free_offers(self, request, queryset):
-        updated = queryset.update(
-            free_products_remaining=20,
-            free_estates_remaining=5
-        )
-        self.message_user(request, f"Reset free offers for {updated} user(s).")
-        logger.info(f"Admin reset free offers for {updated} user(s) via action.")
-    reset_free_offers.short_description = "Reset free products and estates to defaults"
+        for offer in queryset:
+            offer.free_products_remaining = 0
+            offer.free_estates_remaining = 0
+            offer.save()
+        self.message_user(request, "Reset free offers for selected users.")
 
 @admin.register(Subscription)
-class SubscriptionAdmin(admin.ModelAdmin):
+class SubscriptionAdmin(ModelAdmin):
     list_display = ('shop', 'user', 'status', 'start_date', 'end_date', 'is_trial', 'is_active')
     list_filter = ('status', 'is_trial', ActiveSubscriptionFilter)
     search_fields = ('shop__name', 'user__username', 'user__email')
@@ -225,27 +228,11 @@ class SubscriptionAdmin(admin.ModelAdmin):
     actions = ['extend_subscription', 'cancel_subscription']
 
     def extend_subscription(self, request, queryset):
-        updated = 0
         for subscription in queryset:
-            subscription.end_date = timezone.now() + timedelta(days=30)
-            subscription.is_trial = False
-            subscription.status = Subscription.Status.ACTIVE
-            subscription.shop.is_active = True
-            subscription.shop.save(update_fields=['is_active'])
-            subscription.save()
-            updated += 1
-            logger.info(f"Admin extended subscription {subscription.id} for shop {subscription.shop.id}")
-        self.message_user(request, f"Extended {updated} subscription(s) by 30 days.")
-    extend_subscription.short_description = "Extend selected subscriptions by 30 days"
+            subscription.extend()
+        self.message_user(request, "Extended selected subscriptions.")
 
     def cancel_subscription(self, request, queryset):
-        updated = queryset.update(
-            status=Subscription.Status.CANCELED,
-            end_date=timezone.now()
-        )
         for subscription in queryset:
-            subscription.shop.is_active = False
-            subscription.shop.save()
-            logger.info(f"Admin canceled subscription {subscription.id} for shop {subscription.shop.id}")
-        self.message_user(request, f"Canceled {updated} subscription(s).")
-    cancel_subscription.short_description = "Cancel selected subscriptions"
+            subscription.cancel()
+        self.message_user(request, "Cancelled selected subscriptions.")

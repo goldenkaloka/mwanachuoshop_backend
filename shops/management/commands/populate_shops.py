@@ -8,6 +8,7 @@ from django.core.files import File
 from django.conf import settings
 from django.utils import timezone
 from phonenumber_field.phonenumber import PhoneNumber
+from django.contrib.gis.geos import Point
 from shops.models import (
     Shop, ShopMedia, Promotion, Event, Services, 
     UserOffer, Subscription
@@ -92,10 +93,18 @@ class Command(BaseCommand):
         # Tanzanian phone number prefixes
         tz_prefixes = ['74', '75', '76', '77', '78', '79', '65', '67', '68', '69']
         
-        # Sample locations in Tanzania
+        # Sample locations in Tanzania with coordinates
         tz_locations = [
-            "Dar es Salaam", "Arusha", "Mwanza", "Dodoma", "Mbeya",
-            "Morogoro", "Tanga", "Zanzibar City", "Kigoma", "Moshi"
+            {"name": "Dar es Salaam", "lat": -6.8235, "lng": 39.2695},
+            {"name": "Arusha", "lat": -3.3731, "lng": 36.6823},
+            {"name": "Mwanza", "lat": -2.5167, "lng": 32.9000},
+            {"name": "Dodoma", "lat": -6.1730, "lng": 35.7460},
+            {"name": "Mbeya", "lat": -8.9000, "lng": 33.4500},
+            {"name": "Morogoro", "lat": -6.8167, "lng": 37.6667},
+            {"name": "Tanga", "lat": -5.0667, "lng": 39.1000},
+            {"name": "Zanzibar City", "lat": -6.1659, "lng": 39.2026},
+            {"name": "Kigoma", "lat": -4.8833, "lng": 29.6333},
+            {"name": "Moshi", "lat": -3.3500, "lng": 37.3333}
         ]
         
         # Sample shop names by category
@@ -125,7 +134,8 @@ class Command(BaseCommand):
             category = random.choice(list(shop_categories.keys()))
             name = f"{random.choice(shop_categories[category])} {i}"
             phone = f"+255{random.choice(tz_prefixes)}{random.randint(100000, 999999)}"
-            location = random.choice(tz_locations)
+            location_data = random.choice(tz_locations)
+            location_point = Point(location_data["lng"], location_data["lat"])
             
             # Create operating hours
             operating_hours = {
@@ -153,12 +163,11 @@ class Command(BaseCommand):
                     user=user,
                     name=name,
                     phone=PhoneNumber.from_string(phone),
-                    location=location,
-                    description=f"A wonderful {category} located in {location}. "
+                    location=location_point,
+                    description=f"A wonderful {category} located in {location_data['name']}. "
                                 f"We offer the best services and products in town!",
                     operating_hours=operating_hours,
-                    social_media=social_media,
-                    university_partner=random.choice([True, False])
+                    social_media=social_media
                 )
                 shop.image.save(
                     os.path.basename(image_path),

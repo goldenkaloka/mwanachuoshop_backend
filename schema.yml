@@ -2,12 +2,12 @@ openapi: 3.0.3
 info:
   title: Mwanachuoshop API
   version: 1.0.0
-  description: mwanachuoshop api is an api which will server as a basis for all mwanachuoshop
+  description: mwanachuoshop api is an api which will serve as a basis for all mwanachuoshop
     system management
 paths:
   /api/attribute-values/:
     get:
-      operationId: api_attribute_values_list
+      operationId: attribute_values_list
       parameters:
       - in: query
         name: attribute_id
@@ -18,7 +18,7 @@ paths:
         schema:
           type: integer
       tags:
-      - api
+      - attribute-values
       security:
       - jwtAuth: []
       responses:
@@ -31,9 +31,9 @@ paths:
                   $ref: '#/components/schemas/AttributeValue'
           description: ''
     post:
-      operationId: api_attribute_values_create
+      operationId: attribute_values_create
       tags:
-      - api
+      - attribute-values
       requestBody:
         content:
           application/json:
@@ -57,7 +57,7 @@ paths:
           description: ''
   /api/attribute-values/{id}/:
     get:
-      operationId: api_attribute_values_retrieve
+      operationId: attribute_values_retrieve
       parameters:
       - in: path
         name: id
@@ -66,7 +66,7 @@ paths:
         description: A unique integer value identifying this attribute value.
         required: true
       tags:
-      - api
+      - attribute-values
       security:
       - jwtAuth: []
       responses:
@@ -77,7 +77,7 @@ paths:
                 $ref: '#/components/schemas/AttributeValue'
           description: ''
     put:
-      operationId: api_attribute_values_update
+      operationId: attribute_values_update
       parameters:
       - in: path
         name: id
@@ -86,7 +86,7 @@ paths:
         description: A unique integer value identifying this attribute value.
         required: true
       tags:
-      - api
+      - attribute-values
       requestBody:
         content:
           application/json:
@@ -109,7 +109,7 @@ paths:
                 $ref: '#/components/schemas/AttributeValue'
           description: ''
     patch:
-      operationId: api_attribute_values_partial_update
+      operationId: attribute_values_partial_update
       parameters:
       - in: path
         name: id
@@ -118,7 +118,7 @@ paths:
         description: A unique integer value identifying this attribute value.
         required: true
       tags:
-      - api
+      - attribute-values
       requestBody:
         content:
           application/json:
@@ -140,7 +140,7 @@ paths:
                 $ref: '#/components/schemas/AttributeValue'
           description: ''
     delete:
-      operationId: api_attribute_values_destroy
+      operationId: attribute_values_destroy
       parameters:
       - in: path
         name: id
@@ -149,7 +149,7 @@ paths:
         description: A unique integer value identifying this attribute value.
         required: true
       tags:
-      - api
+      - attribute-values
       security:
       - jwtAuth: []
       responses:
@@ -157,9 +157,9 @@ paths:
           description: No response body
   /api/attributes/:
     get:
-      operationId: api_attributes_list
+      operationId: attributes_list
       tags:
-      - api
+      - attributes
       security:
       - jwtAuth: []
       responses:
@@ -172,9 +172,9 @@ paths:
                   $ref: '#/components/schemas/Attribute'
           description: ''
     post:
-      operationId: api_attributes_create
+      operationId: attributes_create
       tags:
-      - api
+      - attributes
       requestBody:
         content:
           application/json:
@@ -198,7 +198,7 @@ paths:
           description: ''
   /api/attributes/{id}/:
     get:
-      operationId: api_attributes_retrieve
+      operationId: attributes_retrieve
       parameters:
       - in: path
         name: id
@@ -207,7 +207,7 @@ paths:
         description: A unique integer value identifying this attribute.
         required: true
       tags:
-      - api
+      - attributes
       security:
       - jwtAuth: []
       responses:
@@ -218,7 +218,7 @@ paths:
                 $ref: '#/components/schemas/Attribute'
           description: ''
     put:
-      operationId: api_attributes_update
+      operationId: attributes_update
       parameters:
       - in: path
         name: id
@@ -227,7 +227,7 @@ paths:
         description: A unique integer value identifying this attribute.
         required: true
       tags:
-      - api
+      - attributes
       requestBody:
         content:
           application/json:
@@ -250,7 +250,7 @@ paths:
                 $ref: '#/components/schemas/Attribute'
           description: ''
     patch:
-      operationId: api_attributes_partial_update
+      operationId: attributes_partial_update
       parameters:
       - in: path
         name: id
@@ -259,7 +259,7 @@ paths:
         description: A unique integer value identifying this attribute.
         required: true
       tags:
-      - api
+      - attributes
       requestBody:
         content:
           application/json:
@@ -281,7 +281,7 @@ paths:
                 $ref: '#/components/schemas/Attribute'
           description: ''
     delete:
-      operationId: api_attributes_destroy
+      operationId: attributes_destroy
       parameters:
       - in: path
         name: id
@@ -290,7 +290,7 @@ paths:
         description: A unique integer value identifying this attribute.
         required: true
       tags:
-      - api
+      - attributes
       security:
       - jwtAuth: []
       responses:
@@ -298,14 +298,9 @@ paths:
           description: No response body
   /api/brands/:
     get:
-      operationId: api_brands_list
-      parameters:
-      - in: query
-        name: category_id
-        schema:
-          type: integer
+      operationId: brands_list
       tags:
-      - api
+      - brands
       security:
       - jwtAuth: []
       responses:
@@ -318,9 +313,9 @@ paths:
                   $ref: '#/components/schemas/Brand'
           description: ''
     post:
-      operationId: api_brands_create
+      operationId: brands_create
       tags:
-      - api
+      - brands
       requestBody:
         content:
           application/json:
@@ -344,7 +339,7 @@ paths:
           description: ''
   /api/brands/{id}/:
     get:
-      operationId: api_brands_retrieve
+      operationId: brands_retrieve
       parameters:
       - in: path
         name: id
@@ -353,7 +348,7 @@ paths:
         description: A unique integer value identifying this brand.
         required: true
       tags:
-      - api
+      - brands
       security:
       - jwtAuth: []
       responses:
@@ -364,7 +359,7 @@ paths:
                 $ref: '#/components/schemas/Brand'
           description: ''
     put:
-      operationId: api_brands_update
+      operationId: brands_update
       parameters:
       - in: path
         name: id
@@ -373,7 +368,7 @@ paths:
         description: A unique integer value identifying this brand.
         required: true
       tags:
-      - api
+      - brands
       requestBody:
         content:
           application/json:
@@ -396,7 +391,7 @@ paths:
                 $ref: '#/components/schemas/Brand'
           description: ''
     patch:
-      operationId: api_brands_partial_update
+      operationId: brands_partial_update
       parameters:
       - in: path
         name: id
@@ -405,7 +400,7 @@ paths:
         description: A unique integer value identifying this brand.
         required: true
       tags:
-      - api
+      - brands
       requestBody:
         content:
           application/json:
@@ -427,7 +422,7 @@ paths:
                 $ref: '#/components/schemas/Brand'
           description: ''
     delete:
-      operationId: api_brands_destroy
+      operationId: brands_destroy
       parameters:
       - in: path
         name: id
@@ -436,17 +431,92 @@ paths:
         description: A unique integer value identifying this brand.
         required: true
       tags:
-      - api
+      - brands
       security:
       - jwtAuth: []
       responses:
         '204':
           description: No response body
+  /api/campuses/:
+    get:
+      operationId: campuses_list
+      description: ViewSet for Campus model - read-only for regular users
+      tags:
+      - campuses
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Campus'
+          description: ''
+  /api/campuses/{id}/:
+    get:
+      operationId: campuses_retrieve
+      description: ViewSet for Campus model - read-only for regular users
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this campus.
+        required: true
+      tags:
+      - campuses
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Campus'
+          description: ''
+  /api/campuses/all/:
+    get:
+      operationId: campuses_all_retrieve
+      description: Get all campuses with coordinates - frontend handles distance calculations
+      tags:
+      - campuses
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Campus'
+          description: ''
+  /api/campuses/nearby/:
+    get:
+      operationId: campuses_nearby_retrieve
+      description: |-
+        Get campuses within a given radius (km) of provided lat/lng.
+        Example: /api/campuses/nearby/?lat=-6.8&lng=39.2&radius=20
+      tags:
+      - campuses
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Campus'
+          description: ''
   /api/categories/:
     get:
-      operationId: api_categories_list
+      operationId: categories_list
       tags:
-      - api
+      - categories
       security:
       - jwtAuth: []
       responses:
@@ -459,9 +529,9 @@ paths:
                   $ref: '#/components/schemas/Category'
           description: ''
     post:
-      operationId: api_categories_create
+      operationId: categories_create
       tags:
-      - api
+      - categories
       requestBody:
         content:
           application/json:
@@ -485,7 +555,7 @@ paths:
           description: ''
   /api/categories/{id}/:
     get:
-      operationId: api_categories_retrieve
+      operationId: categories_retrieve
       parameters:
       - in: path
         name: id
@@ -494,7 +564,7 @@ paths:
         description: A unique integer value identifying this category.
         required: true
       tags:
-      - api
+      - categories
       security:
       - jwtAuth: []
       responses:
@@ -505,7 +575,7 @@ paths:
                 $ref: '#/components/schemas/Category'
           description: ''
     put:
-      operationId: api_categories_update
+      operationId: categories_update
       parameters:
       - in: path
         name: id
@@ -514,7 +584,7 @@ paths:
         description: A unique integer value identifying this category.
         required: true
       tags:
-      - api
+      - categories
       requestBody:
         content:
           application/json:
@@ -537,7 +607,7 @@ paths:
                 $ref: '#/components/schemas/Category'
           description: ''
     patch:
-      operationId: api_categories_partial_update
+      operationId: categories_partial_update
       parameters:
       - in: path
         name: id
@@ -546,7 +616,7 @@ paths:
         description: A unique integer value identifying this category.
         required: true
       tags:
-      - api
+      - categories
       requestBody:
         content:
           application/json:
@@ -568,7 +638,7 @@ paths:
                 $ref: '#/components/schemas/Category'
           description: ''
     delete:
-      operationId: api_categories_destroy
+      operationId: categories_destroy
       parameters:
       - in: path
         name: id
@@ -577,26 +647,86 @@ paths:
         description: A unique integer value identifying this category.
         required: true
       tags:
-      - api
+      - categories
       security:
       - jwtAuth: []
       responses:
         '204':
           description: No response body
+  /api/estates/create-estate-payment/:
+    post:
+      operationId: estates_create_estate_payment_create
+      tags:
+      - estates
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EstatePaymentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EstatePaymentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EstatePaymentRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstatePaymentResponse'
+              examples:
+                Success:
+                  value:
+                    detail: Property activated.
+                    property_id: 1
+                    is_available: true
+                    free_estates_remaining: 4
+                DepositRequired:
+                  value:
+                    error: Insufficient funds
+                    detail: Deposit required to activate property.
+                    deposit_url: https://example.com/deposit
+                    property_id: 1
+                    is_available: false
+                    free_estates_remaining: 0
+                  summary: Deposit Required
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstatePaymentResponse'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstatePaymentResponse'
+          description: ''
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstatePaymentResponse'
+          description: ''
   /api/estates/properties/:
     get:
-      operationId: api_estates_properties_list
+      operationId: estates_properties_list
       parameters:
-      - name: cursor
-        required: false
-        in: query
-        description: The pagination cursor value.
-        schema:
-          type: string
       - in: query
         name: is_available
         schema:
           type: boolean
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
       - name: page_size
         required: false
         in: query
@@ -613,22 +743,8 @@ paths:
         description: A search term.
         schema:
           type: string
-      - in: query
-        name: video_status
-        schema:
-          type: string
-          enum:
-          - Completed
-          - Failed
-          - Pending
-          - Processing
-        description: |-
-          * `Pending` - Pending
-          * `Processing` - Processing
-          * `Completed` - Completed
-          * `Failed` - Failed
       tags:
-      - api
+      - estates
       security:
       - jwtAuth: []
       - {}
@@ -640,9 +756,9 @@ paths:
                 $ref: '#/components/schemas/PaginatedPropertyList'
           description: ''
     post:
-      operationId: api_estates_properties_create
+      operationId: estates_properties_create
       tags:
-      - api
+      - estates
       requestBody:
         content:
           application/json:
@@ -666,7 +782,7 @@ paths:
           description: ''
   /api/estates/properties/{id}/:
     get:
-      operationId: api_estates_properties_retrieve
+      operationId: estates_properties_retrieve
       parameters:
       - in: path
         name: id
@@ -675,7 +791,7 @@ paths:
         description: A unique integer value identifying this Property.
         required: true
       tags:
-      - api
+      - estates
       security:
       - jwtAuth: []
       - {}
@@ -687,7 +803,7 @@ paths:
                 $ref: '#/components/schemas/Property'
           description: ''
     put:
-      operationId: api_estates_properties_update
+      operationId: estates_properties_update
       parameters:
       - in: path
         name: id
@@ -696,7 +812,7 @@ paths:
         description: A unique integer value identifying this Property.
         required: true
       tags:
-      - api
+      - estates
       requestBody:
         content:
           application/json:
@@ -719,7 +835,7 @@ paths:
                 $ref: '#/components/schemas/Property'
           description: ''
     patch:
-      operationId: api_estates_properties_partial_update
+      operationId: estates_properties_partial_update
       parameters:
       - in: path
         name: id
@@ -728,7 +844,7 @@ paths:
         description: A unique integer value identifying this Property.
         required: true
       tags:
-      - api
+      - estates
       requestBody:
         content:
           application/json:
@@ -750,7 +866,7 @@ paths:
                 $ref: '#/components/schemas/Property'
           description: ''
     delete:
-      operationId: api_estates_properties_destroy
+      operationId: estates_properties_destroy
       parameters:
       - in: path
         name: id
@@ -759,27 +875,19 @@ paths:
         description: A unique integer value identifying this Property.
         required: true
       tags:
-      - api
+      - estates
       security:
       - jwtAuth: []
       responses:
         '204':
           description: No response body
-  /api/estates/properties/{id}/playlist/:
+  /api/estates/properties/near_university/:
     get:
-      operationId: api_estates_properties_playlist_retrieve
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this Property.
-        required: true
+      operationId: estates_properties_near_university_retrieve
       tags:
-      - api
+      - estates
       security:
       - jwtAuth: []
-      - {}
       responses:
         '200':
           content:
@@ -787,55 +895,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/Property'
           description: ''
-  /api/estates/properties/{id}/segments/{segment_name}:
+  /api/estates/properties/near_user/:
     get:
-      operationId: api_estates_properties_segments_retrieve
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          pattern: ^\d+$
-        required: true
-      - in: path
-        name: segment_name
-        schema:
-          type: string
-          pattern: ^[^/]+\.ts$
-        required: true
+      operationId: estates_properties_near_user_retrieve
       tags:
-      - api
+      - estates
       security:
       - jwtAuth: []
-      - {}
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Property'
-          description: ''
-  /api/estates/properties/{id}/segments/{segment_name}/:
-    get:
-      operationId: api_estates_properties_segments_retrieve_2
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this Property.
-        required: true
-      - in: path
-        name: segment_name
-        schema:
-          type: string
-          pattern: ^[^/]+\.ts$
-        required: true
-      tags:
-      - api
-      security:
-      - jwtAuth: []
-      - {}
       responses:
         '200':
           content:
@@ -845,14 +911,14 @@ paths:
           description: ''
   /api/estates/property-images/:
     get:
-      operationId: api_estates_property_images_list
+      operationId: estates_property_images_list
       parameters:
-      - name: cursor
+      - name: page
         required: false
         in: query
-        description: The pagination cursor value.
+        description: A page number within the paginated result set.
         schema:
-          type: string
+          type: integer
       - name: page_size
         required: false
         in: query
@@ -860,7 +926,7 @@ paths:
         schema:
           type: integer
       tags:
-      - api
+      - estates
       security:
       - jwtAuth: []
       - {}
@@ -872,9 +938,9 @@ paths:
                 $ref: '#/components/schemas/PaginatedPropertyImageList'
           description: ''
     post:
-      operationId: api_estates_property_images_create
+      operationId: estates_property_images_create
       tags:
-      - api
+      - estates
       requestBody:
         content:
           application/json:
@@ -898,7 +964,7 @@ paths:
           description: ''
   /api/estates/property-images/{id}/:
     get:
-      operationId: api_estates_property_images_retrieve
+      operationId: estates_property_images_retrieve
       parameters:
       - in: path
         name: id
@@ -907,7 +973,7 @@ paths:
         description: A unique integer value identifying this Property Image.
         required: true
       tags:
-      - api
+      - estates
       security:
       - jwtAuth: []
       - {}
@@ -919,7 +985,7 @@ paths:
                 $ref: '#/components/schemas/PropertyImage'
           description: ''
     put:
-      operationId: api_estates_property_images_update
+      operationId: estates_property_images_update
       parameters:
       - in: path
         name: id
@@ -928,7 +994,7 @@ paths:
         description: A unique integer value identifying this Property Image.
         required: true
       tags:
-      - api
+      - estates
       requestBody:
         content:
           application/json:
@@ -951,7 +1017,7 @@ paths:
                 $ref: '#/components/schemas/PropertyImage'
           description: ''
     patch:
-      operationId: api_estates_property_images_partial_update
+      operationId: estates_property_images_partial_update
       parameters:
       - in: path
         name: id
@@ -960,7 +1026,7 @@ paths:
         description: A unique integer value identifying this Property Image.
         required: true
       tags:
-      - api
+      - estates
       requestBody:
         content:
           application/json:
@@ -982,7 +1048,7 @@ paths:
                 $ref: '#/components/schemas/PropertyImage'
           description: ''
     delete:
-      operationId: api_estates_property_images_destroy
+      operationId: estates_property_images_destroy
       parameters:
       - in: path
         name: id
@@ -991,7 +1057,7 @@ paths:
         description: A unique integer value identifying this Property Image.
         required: true
       tags:
-      - api
+      - estates
       security:
       - jwtAuth: []
       responses:
@@ -999,9 +1065,9 @@ paths:
           description: No response body
   /api/estates/property-types/:
     get:
-      operationId: api_estates_property_types_list
+      operationId: estates_property_types_list
       tags:
-      - api
+      - estates
       security:
       - jwtAuth: []
       - {}
@@ -1015,9 +1081,9 @@ paths:
                   $ref: '#/components/schemas/PropertyType'
           description: ''
     post:
-      operationId: api_estates_property_types_create
+      operationId: estates_property_types_create
       tags:
-      - api
+      - estates
       requestBody:
         content:
           application/json:
@@ -1041,7 +1107,7 @@ paths:
           description: ''
   /api/estates/property-types/{id}/:
     get:
-      operationId: api_estates_property_types_retrieve
+      operationId: estates_property_types_retrieve
       parameters:
       - in: path
         name: id
@@ -1050,7 +1116,7 @@ paths:
         description: A unique integer value identifying this Property Type.
         required: true
       tags:
-      - api
+      - estates
       security:
       - jwtAuth: []
       - {}
@@ -1062,7 +1128,7 @@ paths:
                 $ref: '#/components/schemas/PropertyType'
           description: ''
     put:
-      operationId: api_estates_property_types_update
+      operationId: estates_property_types_update
       parameters:
       - in: path
         name: id
@@ -1071,7 +1137,7 @@ paths:
         description: A unique integer value identifying this Property Type.
         required: true
       tags:
-      - api
+      - estates
       requestBody:
         content:
           application/json:
@@ -1094,7 +1160,7 @@ paths:
                 $ref: '#/components/schemas/PropertyType'
           description: ''
     patch:
-      operationId: api_estates_property_types_partial_update
+      operationId: estates_property_types_partial_update
       parameters:
       - in: path
         name: id
@@ -1103,7 +1169,7 @@ paths:
         description: A unique integer value identifying this Property Type.
         required: true
       tags:
-      - api
+      - estates
       requestBody:
         content:
           application/json:
@@ -1125,7 +1191,7 @@ paths:
                 $ref: '#/components/schemas/PropertyType'
           description: ''
     delete:
-      operationId: api_estates_property_types_destroy
+      operationId: estates_property_types_destroy
       parameters:
       - in: path
         name: id
@@ -1134,82 +1200,213 @@ paths:
         description: A unique integer value identifying this Property Type.
         required: true
       tags:
-      - api
+      - estates
       security:
       - jwtAuth: []
       responses:
         '204':
           description: No response body
-  /api/payments/azampay-callback/:
+  /api/payments/create-brand-payment/:
     post:
-      operationId: api_payments_azampay_callback_create
+      operationId: payments_create_brand_payment_create
+      description: Create a payment for a brand.
       tags:
-      - api
+      - payments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BrandPaymentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BrandPaymentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BrandPaymentRequest'
+        required: true
       security:
       - jwtAuth: []
-      - {}
       responses:
         '200':
-          description: No response body
-  /api/payments/azampay-callback-compatible/:
-    post:
-      operationId: api_payments_azampay_callback_compatible_create
-      tags:
-      - api
-      security:
-      - jwtAuth: []
-      - {}
-      responses:
-        '200':
-          description: No response body
-  /api/payments/callback/azampay/:
-    post:
-      operationId: api_payments_callback_azampay_create
-      tags:
-      - api
-      security:
-      - jwtAuth: []
-      - {}
-      responses:
-        '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrandPaymentResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrandPaymentResponse'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrandPaymentResponse'
+          description: ''
   /api/payments/create-estate-payment/:
     post:
-      operationId: api_payments_create_estate_payment_create
+      operationId: payments_create_estate_payment_create
+      description: Create a payment for an estate.
       tags:
-      - api
+      - payments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EstatePaymentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EstatePaymentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EstatePaymentRequest'
+        required: true
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstatePaymentResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstatePaymentResponse'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstatePaymentResponse'
+          description: ''
   /api/payments/create-product-payment/:
     post:
-      operationId: api_payments_create_product_payment_create
-      description: Initiate a payment for product activation (0.1% of product price,
-        minimum $1.00).
+      operationId: payments_create_product_payment_create
+      description: Initiate a payment for product activation using wallet.
       tags:
-      - api
+      - payments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductPaymentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProductPaymentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProductPaymentRequest'
+        required: true
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductPaymentResponse'
+              examples:
+                Success:
+                  value:
+                    detail: Product activated.
+                    product_id: 1
+                    is_active: true
+                    free_products_remaining: 4
+                AlreadyActive:
+                  value:
+                    detail: Product already active.
+                  summary: Already Active
+                Error:
+                  value:
+                    error: Product ID is required.
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductPaymentResponse'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductPaymentResponse'
+          description: ''
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductPaymentResponse'
+          description: ''
   /api/payments/create-shop-subscription-payment/:
     post:
-      operationId: api_payments_create_shop_subscription_payment_create
+      operationId: payments_create_shop_subscription_payment_create
+      description: Initiate a payment for a 1-month shop subscription using wallet.
       tags:
-      - api
+      - payments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShopSubscriptionPaymentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ShopSubscriptionPaymentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ShopSubscriptionPaymentRequest'
+        required: true
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShopSubscriptionPaymentResponse'
+              examples:
+                Success:
+                  value:
+                    detail: Subscription activated.
+                    shop_id: 1
+                    subscription_status: active
+                    end_date: '2025-08-01T12:00:00Z'
+                AlreadyActive:
+                  value:
+                    detail: Subscription already active.
+                  summary: Already Active
+                Error:
+                  value:
+                    error: Shop ID is required.
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShopSubscriptionPaymentResponse'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShopSubscriptionPaymentResponse'
+          description: ''
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShopSubscriptionPaymentResponse'
+          description: ''
   /api/payments/payments/:
     get:
-      operationId: api_payments_payments_list
+      operationId: payments_payments_list
       tags:
-      - api
+      - payments
       security:
       - jwtAuth: []
       responses:
@@ -1222,9 +1419,9 @@ paths:
                   $ref: '#/components/schemas/Payment'
           description: ''
     post:
-      operationId: api_payments_payments_create
+      operationId: payments_payments_create
       tags:
-      - api
+      - payments
       requestBody:
         content:
           application/json:
@@ -1248,7 +1445,7 @@ paths:
           description: ''
   /api/payments/payments/{id}/:
     get:
-      operationId: api_payments_payments_retrieve
+      operationId: payments_payments_retrieve
       parameters:
       - in: path
         name: id
@@ -1257,7 +1454,7 @@ paths:
         description: A unique integer value identifying this payment.
         required: true
       tags:
-      - api
+      - payments
       security:
       - jwtAuth: []
       responses:
@@ -1268,7 +1465,7 @@ paths:
                 $ref: '#/components/schemas/Payment'
           description: ''
     put:
-      operationId: api_payments_payments_update
+      operationId: payments_payments_update
       parameters:
       - in: path
         name: id
@@ -1277,7 +1474,7 @@ paths:
         description: A unique integer value identifying this payment.
         required: true
       tags:
-      - api
+      - payments
       requestBody:
         content:
           application/json:
@@ -1300,7 +1497,7 @@ paths:
                 $ref: '#/components/schemas/Payment'
           description: ''
     patch:
-      operationId: api_payments_payments_partial_update
+      operationId: payments_payments_partial_update
       parameters:
       - in: path
         name: id
@@ -1309,7 +1506,7 @@ paths:
         description: A unique integer value identifying this payment.
         required: true
       tags:
-      - api
+      - payments
       requestBody:
         content:
           application/json:
@@ -1331,7 +1528,7 @@ paths:
                 $ref: '#/components/schemas/Payment'
           description: ''
     delete:
-      operationId: api_payments_payments_destroy
+      operationId: payments_payments_destroy
       parameters:
       - in: path
         name: id
@@ -1340,7 +1537,7 @@ paths:
         description: A unique integer value identifying this payment.
         required: true
       tags:
-      - api
+      - payments
       security:
       - jwtAuth: []
       responses:
@@ -1348,9 +1545,9 @@ paths:
           description: No response body
   /api/payments/services/:
     get:
-      operationId: api_payments_services_list
+      operationId: payments_services_list
       tags:
-      - api
+      - payments
       security:
       - jwtAuth: []
       responses:
@@ -1364,7 +1561,7 @@ paths:
           description: ''
   /api/payments/services/{id}/:
     get:
-      operationId: api_payments_services_retrieve
+      operationId: payments_services_retrieve
       parameters:
       - in: path
         name: id
@@ -1373,7 +1570,7 @@ paths:
         description: A unique integer value identifying this payment service.
         required: true
       tags:
-      - api
+      - payments
       security:
       - jwtAuth: []
       responses:
@@ -1383,9 +1580,218 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaymentService'
           description: ''
+  /api/payments/v3/payments/callback/pesapal/:
+    get:
+      operationId: payments_v3_payments_callback_pesapal_retrieve
+      description: Pesapal payment callback endpoint.
+      tags:
+      - payments
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: Pesapal callback received.
+    post:
+      operationId: payments_v3_payments_callback_pesapal_create
+      description: Pesapal payment callback endpoint.
+      tags:
+      - payments
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: Pesapal callback received.
+  /api/payments/wallet/:
+    get:
+      operationId: payments_wallet_list
+      tags:
+      - payments
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Wallet'
+          description: ''
+    post:
+      operationId: payments_wallet_create
+      tags:
+      - payments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Wallet'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Wallet'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Wallet'
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Wallet'
+          description: ''
+  /api/payments/wallet/{id}/:
+    get:
+      operationId: payments_wallet_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this wallet.
+        required: true
+      tags:
+      - payments
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Wallet'
+          description: ''
+    put:
+      operationId: payments_wallet_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this wallet.
+        required: true
+      tags:
+      - payments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Wallet'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Wallet'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Wallet'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Wallet'
+          description: ''
+    patch:
+      operationId: payments_wallet_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this wallet.
+        required: true
+      tags:
+      - payments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedWallet'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedWallet'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedWallet'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Wallet'
+          description: ''
+    delete:
+      operationId: payments_wallet_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this wallet.
+        required: true
+      tags:
+      - payments
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/payments/wallet/check-payment-status/{transaction_id}/:
+    get:
+      operationId: payments_wallet_check_payment_status_retrieve
+      description: Check the status of a Pesapal v3 payment.
+      parameters:
+      - in: path
+        name: transaction_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - payments
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Wallet'
+          description: ''
+  /api/payments/wallet/deposit/:
+    post:
+      operationId: payments_wallet_deposit_create
+      description: Initiate a Pesapal v3 deposit to fund the wallet.
+      tags:
+      - payments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Wallet'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Wallet'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Wallet'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Wallet'
+          description: ''
   /api/products/:
     get:
-      operationId: api_products_list
+      operationId: products_list
       parameters:
       - name: cursor
         required: false
@@ -1400,7 +1806,7 @@ paths:
         schema:
           type: integer
       tags:
-      - api
+      - products
       security:
       - jwtAuth: []
       responses:
@@ -1411,9 +1817,9 @@ paths:
                 $ref: '#/components/schemas/PaginatedProductList'
           description: ''
     post:
-      operationId: api_products_create
+      operationId: products_create
       tags:
-      - api
+      - products
       requestBody:
         content:
           application/json:
@@ -1437,15 +1843,16 @@ paths:
           description: ''
   /api/products/{id}/:
     get:
-      operationId: api_products_retrieve
+      operationId: products_retrieve
       parameters:
       - in: path
         name: id
         schema:
-          type: string
+          type: integer
+        description: A unique integer value identifying this product.
         required: true
       tags:
-      - api
+      - products
       security:
       - jwtAuth: []
       responses:
@@ -1453,18 +1860,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Product'
+                $ref: '#/components/schemas/ProductDetail'
           description: ''
     put:
-      operationId: api_products_update
+      operationId: products_update
       parameters:
       - in: path
         name: id
         schema:
-          type: string
+          type: integer
+        description: A unique integer value identifying this product.
         required: true
       tags:
-      - api
+      - products
       requestBody:
         content:
           application/json:
@@ -1487,15 +1895,16 @@ paths:
                 $ref: '#/components/schemas/Product'
           description: ''
     patch:
-      operationId: api_products_partial_update
+      operationId: products_partial_update
       parameters:
       - in: path
         name: id
         schema:
-          type: string
+          type: integer
+        description: A unique integer value identifying this product.
         required: true
       tags:
-      - api
+      - products
       requestBody:
         content:
           application/json:
@@ -1517,51 +1926,33 @@ paths:
                 $ref: '#/components/schemas/Product'
           description: ''
     delete:
-      operationId: api_products_destroy
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-        required: true
-      tags:
-      - api
-      security:
-      - jwtAuth: []
-      responses:
-        '204':
-          description: No response body
-  /api/products/{id}/public/:
-    get:
-      operationId: api_products_public_retrieve_2
+      operationId: products_destroy
       parameters:
       - in: path
         name: id
         schema:
           type: integer
+        description: A unique integer value identifying this product.
         required: true
       tags:
-      - api
+      - products
       security:
       - jwtAuth: []
       responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Product'
-          description: ''
-  /api/products/{id}/public_detail/:
+        '204':
+          description: No response body
+  /api/products/{id}/recent/:
     get:
-      operationId: api_products_public_detail_retrieve
+      operationId: products_recent_retrieve_2
       parameters:
       - in: path
         name: id
         schema:
-          type: string
+          type: integer
+        description: A unique integer value identifying this product.
         required: true
       tags:
-      - api
+      - products
       security:
       - jwtAuth: []
       - {}
@@ -1570,11 +1961,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Product'
+                $ref: '#/components/schemas/ProductDetail'
           description: ''
   /api/products/{product_pk}/images/:
     get:
-      operationId: api_products_images_list
+      operationId: products_images_list
       parameters:
       - in: path
         name: product_pk
@@ -1582,7 +1973,7 @@ paths:
           type: integer
         required: true
       tags:
-      - api
+      - products
       security:
       - jwtAuth: []
       responses:
@@ -1595,7 +1986,7 @@ paths:
                   $ref: '#/components/schemas/ProductImage'
           description: ''
     post:
-      operationId: api_products_images_create
+      operationId: products_images_create
       parameters:
       - in: path
         name: product_pk
@@ -1603,7 +1994,7 @@ paths:
           type: integer
         required: true
       tags:
-      - api
+      - products
       requestBody:
         content:
           application/json:
@@ -1627,15 +2018,15 @@ paths:
           description: ''
   /api/products/category/{category_id}/:
     get:
-      operationId: api_products_category_retrieve
+      operationId: products_category_retrieve
       parameters:
       - in: path
         name: category_id
         schema:
-          type: string
+          type: integer
         required: true
       tags:
-      - api
+      - products
       security:
       - jwtAuth: []
       - {}
@@ -1644,26 +2035,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Product'
+                $ref: '#/components/schemas/ProductList'
           description: ''
-  /api/products/confirm-product-creation/:
-    post:
-      operationId: api_products_confirm_product_creation_create
-      description: Activate a product using shop subscription, free offer, or payment
+  /api/products/my_products/:
+    get:
+      operationId: products_my_products_retrieve
+      description: Retrieve the authenticated user's products.
       tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Product'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/Product'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/Product'
-        required: true
+      - products
       security:
       - jwtAuth: []
       responses:
@@ -1673,11 +2052,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/Product'
           description: ''
-  /api/products/public/:
+  /api/products/near_university/:
     get:
-      operationId: api_products_public_retrieve
+      operationId: products_near_university_retrieve
       tags:
-      - api
+      - products
       security:
       - jwtAuth: []
       responses:
@@ -1687,14 +2066,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/Product'
           description: ''
-  /api/products/public_list/:
+  /api/products/near_user/:
     get:
-      operationId: api_products_public_list_retrieve
+      operationId: products_near_user_retrieve
       tags:
-      - api
+      - products
       security:
       - jwtAuth: []
-      - {}
       responses:
         '200':
           content:
@@ -1704,9 +2082,9 @@ paths:
           description: ''
   /api/products/recent/:
     get:
-      operationId: api_products_recent_retrieve
+      operationId: products_recent_retrieve
       tags:
-      - api
+      - products
       security:
       - jwtAuth: []
       - {}
@@ -1715,13 +2093,160 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Product'
+                $ref: '#/components/schemas/ProductList'
           description: ''
+  /api/shops/:
+    get:
+      operationId: shops_list
+      tags:
+      - shops
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Shop'
+          description: ''
+    post:
+      operationId: shops_create
+      tags:
+      - shops
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Shop'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Shop'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Shop'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shop'
+          description: ''
+  /api/shops/{id}/:
+    get:
+      operationId: shops_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this shop.
+        required: true
+      tags:
+      - shops
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shop'
+          description: ''
+    put:
+      operationId: shops_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this shop.
+        required: true
+      tags:
+      - shops
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Shop'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Shop'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Shop'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shop'
+          description: ''
+    patch:
+      operationId: shops_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this shop.
+        required: true
+      tags:
+      - shops
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedShop'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedShop'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedShop'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shop'
+          description: ''
+    delete:
+      operationId: shops_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this shop.
+        required: true
+      tags:
+      - shops
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/shops/events/:
     get:
-      operationId: api_shops_events_list
+      operationId: shops_events_list
+      description: |-
+        A mixin for viewsets whose models have a direct ForeignKey to a Shop.
+        - Filters querysets to show only active/public content or content owned by the user.
+        - Checks for shop ownership and active subscription on creation.
       tags:
-      - api
+      - shops
       security:
       - jwtAuth: []
       - {}
@@ -1735,9 +2260,13 @@ paths:
                   $ref: '#/components/schemas/Event'
           description: ''
     post:
-      operationId: api_shops_events_create
+      operationId: shops_events_create
+      description: |-
+        A mixin for viewsets whose models have a direct ForeignKey to a Shop.
+        - Filters querysets to show only active/public content or content owned by the user.
+        - Checks for shop ownership and active subscription on creation.
       tags:
-      - api
+      - shops
       requestBody:
         content:
           application/json:
@@ -1761,7 +2290,11 @@ paths:
           description: ''
   /api/shops/events/{id}/:
     get:
-      operationId: api_shops_events_retrieve
+      operationId: shops_events_retrieve
+      description: |-
+        A mixin for viewsets whose models have a direct ForeignKey to a Shop.
+        - Filters querysets to show only active/public content or content owned by the user.
+        - Checks for shop ownership and active subscription on creation.
       parameters:
       - in: path
         name: id
@@ -1770,7 +2303,7 @@ paths:
         description: A unique integer value identifying this event.
         required: true
       tags:
-      - api
+      - shops
       security:
       - jwtAuth: []
       - {}
@@ -1782,7 +2315,11 @@ paths:
                 $ref: '#/components/schemas/Event'
           description: ''
     put:
-      operationId: api_shops_events_update
+      operationId: shops_events_update
+      description: |-
+        A mixin for viewsets whose models have a direct ForeignKey to a Shop.
+        - Filters querysets to show only active/public content or content owned by the user.
+        - Checks for shop ownership and active subscription on creation.
       parameters:
       - in: path
         name: id
@@ -1791,7 +2328,7 @@ paths:
         description: A unique integer value identifying this event.
         required: true
       tags:
-      - api
+      - shops
       requestBody:
         content:
           application/json:
@@ -1814,7 +2351,11 @@ paths:
                 $ref: '#/components/schemas/Event'
           description: ''
     patch:
-      operationId: api_shops_events_partial_update
+      operationId: shops_events_partial_update
+      description: |-
+        A mixin for viewsets whose models have a direct ForeignKey to a Shop.
+        - Filters querysets to show only active/public content or content owned by the user.
+        - Checks for shop ownership and active subscription on creation.
       parameters:
       - in: path
         name: id
@@ -1823,7 +2364,7 @@ paths:
         description: A unique integer value identifying this event.
         required: true
       tags:
-      - api
+      - shops
       requestBody:
         content:
           application/json:
@@ -1845,7 +2386,11 @@ paths:
                 $ref: '#/components/schemas/Event'
           description: ''
     delete:
-      operationId: api_shops_events_destroy
+      operationId: shops_events_destroy
+      description: |-
+        A mixin for viewsets whose models have a direct ForeignKey to a Shop.
+        - Filters querysets to show only active/public content or content owned by the user.
+        - Checks for shop ownership and active subscription on creation.
       parameters:
       - in: path
         name: id
@@ -1854,20 +2399,34 @@ paths:
         description: A unique integer value identifying this event.
         required: true
       tags:
-      - api
+      - shops
       security:
       - jwtAuth: []
       responses:
         '204':
           description: No response body
-  /api/shops/offers/:
+  /api/shops/my_shop/:
     get:
-      operationId: api_shops_offers_list
+      operationId: shops_my_shop_retrieve
+      description: Retrieve the authenticated user's shop and its subscription status.
       tags:
-      - api
+      - shops
       security:
       - jwtAuth: []
-      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shop'
+          description: ''
+  /api/shops/offers/:
+    get:
+      operationId: shops_offers_list
+      tags:
+      - shops
+      security:
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -1879,7 +2438,7 @@ paths:
           description: ''
   /api/shops/offers/{id}/:
     get:
-      operationId: api_shops_offers_retrieve
+      operationId: shops_offers_retrieve
       parameters:
       - in: path
         name: id
@@ -1887,10 +2446,23 @@ paths:
           type: string
         required: true
       tags:
-      - api
+      - shops
       security:
       - jwtAuth: []
-      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserOffer'
+          description: ''
+  /api/shops/offers/me/:
+    get:
+      operationId: shops_offers_me_retrieve
+      tags:
+      - shops
+      security:
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -1900,9 +2472,13 @@ paths:
           description: ''
   /api/shops/promotions/:
     get:
-      operationId: api_shops_promotions_list
+      operationId: shops_promotions_list
+      description: |-
+        A mixin for viewsets whose models have a direct ForeignKey to a Shop.
+        - Filters querysets to show only active/public content or content owned by the user.
+        - Checks for shop ownership and active subscription on creation.
       tags:
-      - api
+      - shops
       security:
       - jwtAuth: []
       - {}
@@ -1916,9 +2492,13 @@ paths:
                   $ref: '#/components/schemas/Promotion'
           description: ''
     post:
-      operationId: api_shops_promotions_create
+      operationId: shops_promotions_create
+      description: |-
+        A mixin for viewsets whose models have a direct ForeignKey to a Shop.
+        - Filters querysets to show only active/public content or content owned by the user.
+        - Checks for shop ownership and active subscription on creation.
       tags:
-      - api
+      - shops
       requestBody:
         content:
           application/json:
@@ -1942,7 +2522,11 @@ paths:
           description: ''
   /api/shops/promotions/{id}/:
     get:
-      operationId: api_shops_promotions_retrieve
+      operationId: shops_promotions_retrieve
+      description: |-
+        A mixin for viewsets whose models have a direct ForeignKey to a Shop.
+        - Filters querysets to show only active/public content or content owned by the user.
+        - Checks for shop ownership and active subscription on creation.
       parameters:
       - in: path
         name: id
@@ -1951,7 +2535,7 @@ paths:
         description: A unique integer value identifying this promotion.
         required: true
       tags:
-      - api
+      - shops
       security:
       - jwtAuth: []
       - {}
@@ -1963,7 +2547,11 @@ paths:
                 $ref: '#/components/schemas/Promotion'
           description: ''
     put:
-      operationId: api_shops_promotions_update
+      operationId: shops_promotions_update
+      description: |-
+        A mixin for viewsets whose models have a direct ForeignKey to a Shop.
+        - Filters querysets to show only active/public content or content owned by the user.
+        - Checks for shop ownership and active subscription on creation.
       parameters:
       - in: path
         name: id
@@ -1972,7 +2560,7 @@ paths:
         description: A unique integer value identifying this promotion.
         required: true
       tags:
-      - api
+      - shops
       requestBody:
         content:
           application/json:
@@ -1995,7 +2583,11 @@ paths:
                 $ref: '#/components/schemas/Promotion'
           description: ''
     patch:
-      operationId: api_shops_promotions_partial_update
+      operationId: shops_promotions_partial_update
+      description: |-
+        A mixin for viewsets whose models have a direct ForeignKey to a Shop.
+        - Filters querysets to show only active/public content or content owned by the user.
+        - Checks for shop ownership and active subscription on creation.
       parameters:
       - in: path
         name: id
@@ -2004,7 +2596,7 @@ paths:
         description: A unique integer value identifying this promotion.
         required: true
       tags:
-      - api
+      - shops
       requestBody:
         content:
           application/json:
@@ -2026,7 +2618,11 @@ paths:
                 $ref: '#/components/schemas/Promotion'
           description: ''
     delete:
-      operationId: api_shops_promotions_destroy
+      operationId: shops_promotions_destroy
+      description: |-
+        A mixin for viewsets whose models have a direct ForeignKey to a Shop.
+        - Filters querysets to show only active/public content or content owned by the user.
+        - Checks for shop ownership and active subscription on creation.
       parameters:
       - in: path
         name: id
@@ -2035,7 +2631,7 @@ paths:
         description: A unique integer value identifying this promotion.
         required: true
       tags:
-      - api
+      - shops
       security:
       - jwtAuth: []
       responses:
@@ -2043,9 +2639,13 @@ paths:
           description: No response body
   /api/shops/services/:
     get:
-      operationId: api_shops_services_list
+      operationId: shops_services_list
+      description: |-
+        A mixin for viewsets whose models have a direct ForeignKey to a Shop.
+        - Filters querysets to show only active/public content or content owned by the user.
+        - Checks for shop ownership and active subscription on creation.
       tags:
-      - api
+      - shops
       security:
       - jwtAuth: []
       - {}
@@ -2059,9 +2659,13 @@ paths:
                   $ref: '#/components/schemas/Services'
           description: ''
     post:
-      operationId: api_shops_services_create
+      operationId: shops_services_create
+      description: |-
+        A mixin for viewsets whose models have a direct ForeignKey to a Shop.
+        - Filters querysets to show only active/public content or content owned by the user.
+        - Checks for shop ownership and active subscription on creation.
       tags:
-      - api
+      - shops
       requestBody:
         content:
           application/json:
@@ -2085,7 +2689,11 @@ paths:
           description: ''
   /api/shops/services/{id}/:
     get:
-      operationId: api_shops_services_retrieve
+      operationId: shops_services_retrieve
+      description: |-
+        A mixin for viewsets whose models have a direct ForeignKey to a Shop.
+        - Filters querysets to show only active/public content or content owned by the user.
+        - Checks for shop ownership and active subscription on creation.
       parameters:
       - in: path
         name: id
@@ -2094,7 +2702,7 @@ paths:
         description: A unique integer value identifying this services.
         required: true
       tags:
-      - api
+      - shops
       security:
       - jwtAuth: []
       - {}
@@ -2106,7 +2714,11 @@ paths:
                 $ref: '#/components/schemas/Services'
           description: ''
     put:
-      operationId: api_shops_services_update
+      operationId: shops_services_update
+      description: |-
+        A mixin for viewsets whose models have a direct ForeignKey to a Shop.
+        - Filters querysets to show only active/public content or content owned by the user.
+        - Checks for shop ownership and active subscription on creation.
       parameters:
       - in: path
         name: id
@@ -2115,7 +2727,7 @@ paths:
         description: A unique integer value identifying this services.
         required: true
       tags:
-      - api
+      - shops
       requestBody:
         content:
           application/json:
@@ -2138,7 +2750,11 @@ paths:
                 $ref: '#/components/schemas/Services'
           description: ''
     patch:
-      operationId: api_shops_services_partial_update
+      operationId: shops_services_partial_update
+      description: |-
+        A mixin for viewsets whose models have a direct ForeignKey to a Shop.
+        - Filters querysets to show only active/public content or content owned by the user.
+        - Checks for shop ownership and active subscription on creation.
       parameters:
       - in: path
         name: id
@@ -2147,7 +2763,7 @@ paths:
         description: A unique integer value identifying this services.
         required: true
       tags:
-      - api
+      - shops
       requestBody:
         content:
           application/json:
@@ -2169,7 +2785,11 @@ paths:
                 $ref: '#/components/schemas/Services'
           description: ''
     delete:
-      operationId: api_shops_services_destroy
+      operationId: shops_services_destroy
+      description: |-
+        A mixin for viewsets whose models have a direct ForeignKey to a Shop.
+        - Filters querysets to show only active/public content or content owned by the user.
+        - Checks for shop ownership and active subscription on creation.
       parameters:
       - in: path
         name: id
@@ -2178,7 +2798,7 @@ paths:
         description: A unique integer value identifying this services.
         required: true
       tags:
-      - api
+      - shops
       security:
       - jwtAuth: []
       responses:
@@ -2186,9 +2806,13 @@ paths:
           description: No response body
   /api/shops/shop-media/:
     get:
-      operationId: api_shops_shop_media_list
+      operationId: shops_shop_media_list
+      description: |-
+        A mixin for viewsets whose models have a direct ForeignKey to a Shop.
+        - Filters querysets to show only active/public content or content owned by the user.
+        - Checks for shop ownership and active subscription on creation.
       tags:
-      - api
+      - shops
       security:
       - jwtAuth: []
       - {}
@@ -2202,9 +2826,13 @@ paths:
                   $ref: '#/components/schemas/ShopMedia'
           description: ''
     post:
-      operationId: api_shops_shop_media_create
+      operationId: shops_shop_media_create
+      description: |-
+        A mixin for viewsets whose models have a direct ForeignKey to a Shop.
+        - Filters querysets to show only active/public content or content owned by the user.
+        - Checks for shop ownership and active subscription on creation.
       tags:
-      - api
+      - shops
       requestBody:
         content:
           application/json:
@@ -2228,7 +2856,11 @@ paths:
           description: ''
   /api/shops/shop-media/{id}/:
     get:
-      operationId: api_shops_shop_media_retrieve
+      operationId: shops_shop_media_retrieve
+      description: |-
+        A mixin for viewsets whose models have a direct ForeignKey to a Shop.
+        - Filters querysets to show only active/public content or content owned by the user.
+        - Checks for shop ownership and active subscription on creation.
       parameters:
       - in: path
         name: id
@@ -2237,7 +2869,7 @@ paths:
         description: A unique integer value identifying this shop media.
         required: true
       tags:
-      - api
+      - shops
       security:
       - jwtAuth: []
       - {}
@@ -2249,7 +2881,11 @@ paths:
                 $ref: '#/components/schemas/ShopMedia'
           description: ''
     put:
-      operationId: api_shops_shop_media_update
+      operationId: shops_shop_media_update
+      description: |-
+        A mixin for viewsets whose models have a direct ForeignKey to a Shop.
+        - Filters querysets to show only active/public content or content owned by the user.
+        - Checks for shop ownership and active subscription on creation.
       parameters:
       - in: path
         name: id
@@ -2258,7 +2894,7 @@ paths:
         description: A unique integer value identifying this shop media.
         required: true
       tags:
-      - api
+      - shops
       requestBody:
         content:
           application/json:
@@ -2281,7 +2917,11 @@ paths:
                 $ref: '#/components/schemas/ShopMedia'
           description: ''
     patch:
-      operationId: api_shops_shop_media_partial_update
+      operationId: shops_shop_media_partial_update
+      description: |-
+        A mixin for viewsets whose models have a direct ForeignKey to a Shop.
+        - Filters querysets to show only active/public content or content owned by the user.
+        - Checks for shop ownership and active subscription on creation.
       parameters:
       - in: path
         name: id
@@ -2290,7 +2930,7 @@ paths:
         description: A unique integer value identifying this shop media.
         required: true
       tags:
-      - api
+      - shops
       requestBody:
         content:
           application/json:
@@ -2312,7 +2952,11 @@ paths:
                 $ref: '#/components/schemas/ShopMedia'
           description: ''
     delete:
-      operationId: api_shops_shop_media_destroy
+      operationId: shops_shop_media_destroy
+      description: |-
+        A mixin for viewsets whose models have a direct ForeignKey to a Shop.
+        - Filters querysets to show only active/public content or content owned by the user.
+        - Checks for shop ownership and active subscription on creation.
       parameters:
       - in: path
         name: id
@@ -2321,150 +2965,7 @@ paths:
         description: A unique integer value identifying this shop media.
         required: true
       tags:
-      - api
-      security:
-      - jwtAuth: []
-      responses:
-        '204':
-          description: No response body
-  /api/shops/shops/:
-    get:
-      operationId: api_shops_shops_list
-      tags:
-      - api
-      security:
-      - jwtAuth: []
-      - {}
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Shop'
-          description: ''
-    post:
-      operationId: api_shops_shops_create
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Shop'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/Shop'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/Shop'
-        required: true
-      security:
-      - jwtAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Shop'
-          description: ''
-  /api/shops/shops/{id}/:
-    get:
-      operationId: api_shops_shops_retrieve
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this shop.
-        required: true
-      tags:
-      - api
-      security:
-      - jwtAuth: []
-      - {}
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Shop'
-          description: ''
-    put:
-      operationId: api_shops_shops_update
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this shop.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Shop'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/Shop'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/Shop'
-        required: true
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Shop'
-          description: ''
-    patch:
-      operationId: api_shops_shops_partial_update
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this shop.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedShop'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedShop'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedShop'
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Shop'
-          description: ''
-    delete:
-      operationId: api_shops_shops_destroy
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this shop.
-        required: true
-      tags:
-      - api
+      - shops
       security:
       - jwtAuth: []
       responses:
@@ -2472,12 +2973,11 @@ paths:
           description: No response body
   /api/shops/subscriptions/:
     get:
-      operationId: api_shops_subscriptions_list
+      operationId: shops_subscriptions_list
       tags:
-      - api
+      - shops
       security:
       - jwtAuth: []
-      - {}
       responses:
         '200':
           content:
@@ -2489,7 +2989,7 @@ paths:
           description: ''
   /api/shops/subscriptions/{id}/:
     get:
-      operationId: api_shops_subscriptions_retrieve
+      operationId: shops_subscriptions_retrieve
       parameters:
       - in: path
         name: id
@@ -2497,10 +2997,9 @@ paths:
           type: string
         required: true
       tags:
-      - api
+      - shops
       security:
       - jwtAuth: []
-      - {}
       responses:
         '200':
           content:
@@ -2508,14 +3007,48 @@ paths:
               schema:
                 $ref: '#/components/schemas/Subscription'
           description: ''
-  /api/token:
+  /api/shops/subscriptions/{id}/extend/:
     post:
-      operationId: api_token_create
+      operationId: shops_subscriptions_extend_create
+      description: Extend the subscription duration for the authenticated user's shop
+        by 1 month via wallet payment.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - shops
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Subscription'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Subscription'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Subscription'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+          description: ''
+  /api/token/:
+    post:
+      operationId: token_create
       description: |-
         Takes a set of user credentials and returns an access and refresh JSON web
         token pair to prove the authentication of those credentials.
       tags:
-      - api
+      - token
       requestBody:
         content:
           application/json:
@@ -2537,12 +3070,12 @@ paths:
           description: ''
   /api/token/refresh/:
     post:
-      operationId: api_token_refresh_create
+      operationId: token_refresh_create
       description: |-
         Takes a refresh type JSON web token and returns an access type JSON web
         token if the refresh token is valid.
       tags:
-      - api
+      - token
       requestBody:
         content:
           application/json:
@@ -2562,9 +3095,112 @@ paths:
               schema:
                 $ref: '#/components/schemas/TokenRefresh'
           description: ''
+  /api/universities/:
+    get:
+      operationId: universities_list
+      description: Simple list endpoint - location logic handled by frontend
+      tags:
+      - universities
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/University'
+          description: ''
+  /api/universities/{id}/:
+    get:
+      operationId: universities_retrieve
+      description: ViewSet for University model - read-only for regular users
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this University.
+        required: true
+      tags:
+      - universities
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/University'
+          description: ''
+  /api/universities/{id}/campuses/:
+    get:
+      operationId: universities_campuses_retrieve
+      description: Get all campuses for a specific university
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this University.
+        required: true
+      tags:
+      - universities
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/University'
+          description: ''
+  /api/users/:
+    get:
+      operationId: users_list
+      description: ViewSet for User model - authenticated access only
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UsersAppCustomUserDetails'
+          description: ''
+  /api/users/{id}/:
+    get:
+      operationId: users_retrieve
+      description: ViewSet for User model - authenticated access only
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this new user.
+        required: true
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsersAppCustomUserDetails'
+          description: ''
   /api/users/auth/login/:
     post:
-      operationId: api_users_auth_login_create
+      operationId: users_auth_login_create
       description: |-
         Check the credentials and return the REST Token
         if the credentials are valid and authenticated.
@@ -2574,7 +3210,7 @@ paths:
         Accept the following POST parameters: username, password
         Return the REST Framework Token Object's key.
       tags:
-      - api
+      - users
       requestBody:
         content:
           application/json:
@@ -2599,14 +3235,14 @@ paths:
           description: ''
   /api/users/auth/logout/:
     post:
-      operationId: api_users_auth_logout_create
+      operationId: users_auth_logout_create
       description: |-
         Calls Django logout method and delete the Token object
         assigned to the current User object.
 
         Accepts/Returns nothing.
       tags:
-      - api
+      - users
       security:
       - jwtAuth: []
       - {}
@@ -2619,14 +3255,14 @@ paths:
           description: ''
   /api/users/auth/password/change/:
     post:
-      operationId: api_users_auth_password_change_create
+      operationId: users_auth_password_change_create
       description: |-
         Calls Django Auth SetPasswordForm save method.
 
         Accepts the following POST parameters: new_password1, new_password2
         Returns the success/fail message.
       tags:
-      - api
+      - users
       requestBody:
         content:
           application/json:
@@ -2650,14 +3286,14 @@ paths:
           description: ''
   /api/users/auth/password/reset/:
     post:
-      operationId: api_users_auth_password_reset_create
+      operationId: users_auth_password_reset_create
       description: |-
         Calls Django Auth PasswordResetForm save method.
 
         Accepts the following POST parameters: email
         Returns the success/fail message.
       tags:
-      - api
+      - users
       requestBody:
         content:
           application/json:
@@ -2682,7 +3318,7 @@ paths:
           description: ''
   /api/users/auth/password/reset/confirm/{uidb64}/{token}/:
     post:
-      operationId: api_users_auth_password_reset_confirm_create
+      operationId: users_auth_password_reset_confirm_create
       description: |-
         Password reset e-mail link is confirmed, therefore
         this resets the user's password.
@@ -2702,7 +3338,7 @@ paths:
           type: string
         required: true
       tags:
-      - api
+      - users
       requestBody:
         content:
           application/json:
@@ -2727,9 +3363,10 @@ paths:
           description: ''
   /api/users/auth/profile/:
     get:
-      operationId: api_users_auth_profile_retrieve
+      operationId: users_auth_profile_retrieve
+      description: View for user profile management
       tags:
-      - api
+      - users
       security:
       - jwtAuth: []
       responses:
@@ -2740,9 +3377,10 @@ paths:
                 $ref: '#/components/schemas/Profile'
           description: ''
     put:
-      operationId: api_users_auth_profile_update
+      operationId: users_auth_profile_update
+      description: View for user profile management
       tags:
-      - api
+      - users
       requestBody:
         content:
           application/json:
@@ -2764,9 +3402,10 @@ paths:
                 $ref: '#/components/schemas/Profile'
           description: ''
     patch:
-      operationId: api_users_auth_profile_partial_update
+      operationId: users_auth_profile_partial_update
+      description: View for user profile management
       tags:
-      - api
+      - users
       requestBody:
         content:
           application/json:
@@ -2789,13 +3428,10 @@ paths:
           description: ''
   /api/users/auth/register/:
     post:
-      operationId: api_users_auth_register_create
-      description: |-
-        Registers a new user.
-
-        Accepts the following POST parameters: username, email, password1, password2.
+      operationId: users_auth_register_create
+      description: Custom registration view with location fields
       tags:
-      - api
+      - users
       requestBody:
         content:
           application/json:
@@ -2820,7 +3456,7 @@ paths:
           description: ''
   /api/users/auth/user/:
     get:
-      operationId: api_users_auth_user_retrieve
+      operationId: users_auth_user_retrieve
       description: |-
         Reads and updates UserModel fields
         Accepts GET, PUT, PATCH methods.
@@ -2831,7 +3467,7 @@ paths:
 
         Returns UserModel fields.
       tags:
-      - api
+      - users
       security:
       - jwtAuth: []
       responses:
@@ -2839,10 +3475,10 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CustomUserDetails'
+                $ref: '#/components/schemas/UsersAppCustomUserDetails'
           description: ''
     put:
-      operationId: api_users_auth_user_update
+      operationId: users_auth_user_update
       description: |-
         Reads and updates UserModel fields
         Accepts GET, PUT, PATCH methods.
@@ -2853,18 +3489,19 @@ paths:
 
         Returns UserModel fields.
       tags:
-      - api
+      - users
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CustomUserDetails'
+              $ref: '#/components/schemas/UsersAppCustomUserDetails'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/CustomUserDetails'
+              $ref: '#/components/schemas/UsersAppCustomUserDetails'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/CustomUserDetails'
+              $ref: '#/components/schemas/UsersAppCustomUserDetails'
+        required: true
       security:
       - jwtAuth: []
       responses:
@@ -2872,10 +3509,10 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CustomUserDetails'
+                $ref: '#/components/schemas/UsersAppCustomUserDetails'
           description: ''
     patch:
-      operationId: api_users_auth_user_partial_update
+      operationId: users_auth_user_partial_update
       description: |-
         Reads and updates UserModel fields
         Accepts GET, PUT, PATCH methods.
@@ -2886,18 +3523,18 @@ paths:
 
         Returns UserModel fields.
       tags:
-      - api
+      - users
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedCustomUserDetails'
+              $ref: '#/components/schemas/PatchedUsersAppCustomUserDetails'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedCustomUserDetails'
+              $ref: '#/components/schemas/PatchedUsersAppCustomUserDetails'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedCustomUserDetails'
+              $ref: '#/components/schemas/PatchedUsersAppCustomUserDetails'
       security:
       - jwtAuth: []
       responses:
@@ -2905,18 +3542,162 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CustomUserDetails'
+                $ref: '#/components/schemas/UsersAppCustomUserDetails'
+          description: ''
+  /api/users/campus/suggestions/:
+    get:
+      operationId: users_campus_suggestions_retrieve
+      description: Get campus suggestions.
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CampusSuggestionResponse'
+          description: ''
+  /api/users/get-csrf/:
+    get:
+      operationId: users_get_csrf_retrieve
+      description: Get CSRF token.
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CSRFResponse'
+          description: ''
+  /api/users/offer/:
+    get:
+      operationId: users_offer_retrieve
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserOffer'
+          description: ''
+  /api/users/public/:
+    get:
+      operationId: users_public_list
+      description: Public user discovery endpoint with campus filtering.
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PublicUser'
+          description: ''
+  /api/users/universities/:
+    get:
+      operationId: users_universities_list
+      description: Simple list endpoint - location logic handled by frontend
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/University'
+          description: ''
+  /api/users/universities/{id}/:
+    get:
+      operationId: users_universities_retrieve
+      description: ViewSet for University model - read-only for regular users
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this University.
+        required: true
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/University'
+          description: ''
+  /api/users/universities/{id}/campuses/:
+    get:
+      operationId: users_universities_campuses_retrieve
+      description: Get all campuses for a specific university
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this University.
+        required: true
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/University'
           description: ''
   /api/whatsapp-click/:
     post:
-      operationId: api_whatsapp_click_create
+      operationId: whatsapp_click_create
+      description: Track WhatsApp click for a product.
       tags:
-      - api
+      - whatsapp-click
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WhatsAppClickRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WhatsAppClickRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WhatsAppClickRequest'
+        required: true
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WhatsAppClickResponse'
+          description: ''
 components:
   schemas:
     Attribute:
@@ -2941,14 +3722,23 @@ components:
           allOf:
           - $ref: '#/components/schemas/Attribute'
           readOnly: true
+        attribute_id:
+          type: integer
+          writeOnly: true
+        category:
+          allOf:
+          - $ref: '#/components/schemas/Category'
+          readOnly: true
         category_id:
           type: integer
-          readOnly: true
+          writeOnly: true
         value:
           type: string
           maxLength: 100
       required:
       - attribute
+      - attribute_id
+      - category
       - category_id
       - id
       - value
@@ -2961,13 +3751,112 @@ components:
         name:
           type: string
           maxLength: 100
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+          readOnly: true
+        category_ids:
+          type: array
+          items:
+            type: integer
+          writeOnly: true
         logo:
           type: string
           format: uri
           nullable: true
+        created_by:
+          type: integer
+        is_active:
+          type: boolean
       required:
+      - categories
+      - created_by
       - id
       - name
+    BrandPaymentRequest:
+      type: object
+      properties:
+        brand_id:
+          type: integer
+      required:
+      - brand_id
+    BrandPaymentResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+        brand_id:
+          type: integer
+        is_active:
+          type: boolean
+        free_brands_remaining:
+          type: integer
+        error:
+          type: string
+    CSRFResponse:
+      type: object
+      properties:
+        csrfToken:
+          type: string
+      required:
+      - csrfToken
+    Campus:
+      type: object
+      description: Simple serializer for Campus model - raw data with coordinates
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        university:
+          type: integer
+        university_name:
+          type: string
+          readOnly: true
+        university_short_name:
+          type: string
+          readOnly: true
+        latitude:
+          type: string
+          readOnly: true
+        longitude:
+          type: string
+          readOnly: true
+        address:
+          type: string
+          maxLength: 255
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - latitude
+      - longitude
+      - name
+      - university
+      - university_name
+      - university_short_name
+      - updated_at
+    CampusSuggestionResponse:
+      type: object
+      properties:
+        suggestions:
+          type: array
+          items:
+            type: string
+      required:
+      - suggestions
     Category:
       type: object
       properties:
@@ -2979,12 +3868,34 @@ components:
           maxLength: 100
         parent:
           type: integer
+          writeOnly: true
           nullable: true
+        parent_name:
+          type: string
+          readOnly: true
+          nullable: true
+        children:
+          type: array
+          items:
+            type: string
+          readOnly: true
         is_active:
           type: boolean
+          readOnly: true
       required:
+      - children
       - id
+      - is_active
       - name
+      - parent_name
+    ConditionEnum:
+      enum:
+      - new
+      - used
+      type: string
+      description: |-
+        * `new` - New
+        * `used` - Used
     CustomRegister:
       type: object
       properties:
@@ -3009,7 +3920,33 @@ components:
       - password2
       - phonenumber
       - username
-    CustomUserDetails:
+    EstatePaymentRequest:
+      type: object
+      properties:
+        property_id:
+          type: integer
+      required:
+      - property_id
+    EstatePaymentResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+        property_id:
+          type: integer
+        is_available:
+          type: boolean
+        free_estates_remaining:
+          type: integer
+        deposit_url:
+          type: string
+        error:
+          type: string
+      required:
+      - detail
+      - is_available
+      - property_id
+    EstatesAppCustomUserDetails:
       type: object
       description: User model w/o password
       properties:
@@ -3074,11 +4011,15 @@ components:
           type: string
           format: date-time
           readOnly: true
+        is_active:
+          type: string
+          readOnly: true
       required:
       - created_at
       - description
       - end_time
       - id
+      - is_active
       - shop
       - start_time
       - title
@@ -3091,7 +4032,7 @@ components:
         refresh:
           type: string
         user:
-          $ref: '#/components/schemas/CustomUserDetails'
+          $ref: '#/components/schemas/UsersAppCustomUserDetails'
       required:
       - access
       - refresh
@@ -3141,18 +4082,22 @@ components:
     PaginatedPropertyImageList:
       type: object
       required:
+      - count
       - results
       properties:
+        count:
+          type: integer
+          example: 123
         next:
           type: string
           nullable: true
           format: uri
-          example: http://api.example.org/accounts/?cursor=cD00ODY%3D"
+          example: http://api.example.org/accounts/?page=4
         previous:
           type: string
           nullable: true
           format: uri
-          example: http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+          example: http://api.example.org/accounts/?page=2
         results:
           type: array
           items:
@@ -3160,18 +4105,22 @@ components:
     PaginatedPropertyList:
       type: object
       required:
+      - count
       - results
       properties:
+        count:
+          type: integer
+          example: 123
         next:
           type: string
           nullable: true
           format: uri
-          example: http://api.example.org/accounts/?cursor=cD00ODY%3D"
+          example: http://api.example.org/accounts/?page=4
         previous:
           type: string
           nullable: true
           format: uri
-          example: http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+          example: http://api.example.org/accounts/?page=2
         results:
           type: array
           items:
@@ -3239,9 +4188,16 @@ components:
           allOf:
           - $ref: '#/components/schemas/Attribute'
           readOnly: true
+        attribute_id:
+          type: integer
+          writeOnly: true
+        category:
+          allOf:
+          - $ref: '#/components/schemas/Category'
+          readOnly: true
         category_id:
           type: integer
-          readOnly: true
+          writeOnly: true
         value:
           type: string
           maxLength: 100
@@ -3254,10 +4210,24 @@ components:
         name:
           type: string
           maxLength: 100
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+          readOnly: true
+        category_ids:
+          type: array
+          items:
+            type: integer
+          writeOnly: true
         logo:
           type: string
           format: uri
           nullable: true
+        created_by:
+          type: integer
+        is_active:
+          type: boolean
     PatchedCategory:
       type: object
       properties:
@@ -3269,30 +4239,19 @@ components:
           maxLength: 100
         parent:
           type: integer
+          writeOnly: true
           nullable: true
+        parent_name:
+          type: string
+          readOnly: true
+          nullable: true
+        children:
+          type: array
+          items:
+            type: string
+          readOnly: true
         is_active:
           type: boolean
-    PatchedCustomUserDetails:
-      type: object
-      description: User model w/o password
-      properties:
-        pk:
-          type: integer
-          readOnly: true
-          title: ID
-        email:
-          type: string
-          format: email
-          readOnly: true
-          title: Email address
-        phonenumber:
-          type: string
-          maxLength: 128
-        profile_id:
-          type: integer
-          readOnly: true
-        whatsapp:
-          type: string
           readOnly: true
     PatchedEvent:
       type: object
@@ -3324,6 +4283,9 @@ components:
           type: string
           format: date-time
           readOnly: true
+        is_active:
+          type: string
+          readOnly: true
     PatchedPayment:
       type: object
       properties:
@@ -3349,7 +4311,7 @@ components:
         amount:
           type: string
           format: decimal
-          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          pattern: ^-?\d{0,13}(?:\.\d{0,2})?$
         status:
           allOf:
           - $ref: '#/components/schemas/PaymentStatusEnum'
@@ -3391,43 +4353,32 @@ components:
           maxLength: 255
         description:
           type: string
-        brand:
-          allOf:
-          - $ref: '#/components/schemas/Brand'
-          readOnly: true
         brand_id:
           type: integer
           writeOnly: true
-        category:
-          allOf:
-          - $ref: '#/components/schemas/Category'
-          readOnly: true
         category_id:
           type: integer
           writeOnly: true
-        shop:
-          type: integer
-          nullable: true
+        campus:
+          type: array
+          items:
+            type: integer
         price:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
-        attribute_values:
-          type: array
-          items:
-            $ref: '#/components/schemas/AttributeValue'
-          readOnly: true
-        attribute_value_ids:
-          type: array
-          items:
-            type: integer
-            writeOnly: true
-          writeOnly: true
         images:
           type: array
           items:
             $ref: '#/components/schemas/ProductImage'
           readOnly: true
+        images_upload:
+          type: array
+          items:
+            type: string
+            format: uri
+          writeOnly: true
+          description: Upload multiple images at once.
         created_at:
           type: string
           format: date-time
@@ -3439,8 +4390,18 @@ components:
         is_active:
           type: boolean
           readOnly: true
-        payment_amount:
-          type: string
+        condition:
+          $ref: '#/components/schemas/ConditionEnum'
+        attribute_value_ids:
+          type: array
+          items:
+            type: integer
+            writeOnly: true
+          writeOnly: true
+        attribute_values:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttributeValue'
           readOnly: true
     PatchedProfile:
       type: object
@@ -3450,16 +4411,12 @@ components:
           readOnly: true
         user:
           allOf:
-          - $ref: '#/components/schemas/CustomUserDetails'
+          - $ref: '#/components/schemas/UsersAppCustomUserDetails'
           readOnly: true
         image:
           type: string
           format: uri
           nullable: true
-        whatsapp:
-          type: string
-          nullable: true
-          maxLength: 128
         instagram:
           type: string
           nullable: true
@@ -3468,6 +4425,14 @@ components:
           type: string
           nullable: true
           maxLength: 100
+        facebook:
+          type: string
+          nullable: true
+          maxLength: 100
+        campuses:
+          type: array
+          items:
+            type: integer
     PatchedPromotion:
       type: object
       properties:
@@ -3491,6 +4456,9 @@ components:
           type: string
           format: date-time
           readOnly: true
+        is_active:
+          type: string
+          readOnly: true
     PatchedProperty:
       type: object
       properties:
@@ -3499,7 +4467,7 @@ components:
           readOnly: true
         owner:
           allOf:
-          - $ref: '#/components/schemas/CustomUserDetails'
+          - $ref: '#/components/schemas/EstatesAppCustomUserDetails'
           readOnly: true
         property_type:
           allOf:
@@ -3519,48 +4487,20 @@ components:
           type: string
         location:
           type: string
+          description: Geographical location of the property.
           maxLength: 100
+        campus:
+          type: array
+          items:
+            type: integer
         price:
-          type: integer
-          minimum: 1
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,13}(?:\.\d{0,2})?$
+          description: Price of the property in TZS.
         is_available:
           type: boolean
-          default: true
-        video_name:
-          type: string
-          maxLength: 500
-        video_description:
-          type: string
-        video:
-          type: string
-          format: uri
-        thumbnail:
-          type: string
-          format: uri
-          readOnly: true
-          nullable: true
-        duration:
-          type: number
-          format: double
-          readOnly: true
-          nullable: true
-        hls_playlist:
-          type: string
-          readOnly: true
-          nullable: true
-        hls_playlist_url:
-          type: string
-          readOnly: true
-        video_status:
-          allOf:
-          - $ref: '#/components/schemas/VideoStatusEnum'
-          readOnly: true
-        is_video_processing:
-          type: boolean
-          readOnly: true
-        video_error_message:
-          type: string
-          readOnly: true
+          description: Indicates if the property is active and visible to users.
         created_at:
           type: string
           format: date-time
@@ -3574,6 +4514,13 @@ components:
           items:
             $ref: '#/components/schemas/PropertyImage'
           readOnly: true
+        images_upload:
+          type: array
+          items:
+            type: string
+            format: uri
+          writeOnly: true
+          description: Upload multiple images at once.
     PatchedPropertyImage:
       type: object
       properties:
@@ -3623,6 +4570,9 @@ components:
           type: string
           format: date-time
           readOnly: true
+        is_available:
+          type: string
+          readOnly: true
     PatchedShop:
       type: object
       properties:
@@ -3638,16 +4588,14 @@ components:
         phone:
           type: string
           maxLength: 128
-        location:
-          type: string
-          maxLength: 255
+        campus:
+          type: integer
+          nullable: true
         description:
           type: string
         operating_hours: {}
         social_media:
           nullable: true
-        university_partner:
-          type: boolean
         created_at:
           type: string
           format: date-time
@@ -3656,6 +4604,8 @@ components:
           type: string
           format: date-time
           readOnly: true
+        is_active:
+          type: boolean
         services:
           type: array
           items:
@@ -3680,6 +4630,17 @@ components:
           allOf:
           - $ref: '#/components/schemas/Subscription'
           readOnly: true
+        is_subscription_active:
+          type: string
+          readOnly: true
+        image:
+          type: string
+          format: uri
+          nullable: true
+        subscription_warning:
+          type: string
+          nullable: true
+          readOnly: true
     PatchedShopMedia:
       type: object
       properties:
@@ -3694,6 +4655,53 @@ components:
           nullable: true
         is_primary:
           type: boolean
+    PatchedUsersAppCustomUserDetails:
+      type: object
+      description: User model w/o password
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+        phonenumber:
+          type: string
+          maxLength: 128
+        profile_id:
+          type: integer
+          readOnly: true
+          nullable: true
+        profile_image:
+          type: string
+          nullable: true
+          readOnly: true
+    PatchedWallet:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user:
+          type: integer
+          readOnly: true
+        balance:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,13}(?:\.\d{0,2})?$
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
     Payment:
       type: object
       properties:
@@ -3719,7 +4727,7 @@ components:
         amount:
           type: string
           format: decimal
-          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          pattern: ^-?\d{0,13}(?:\.\d{0,2})?$
         status:
           allOf:
           - $ref: '#/components/schemas/PaymentStatusEnum'
@@ -3770,7 +4778,7 @@ components:
         price:
           type: string
           format: decimal
-          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          pattern: ^-?\d{0,13}(?:\.\d{0,2})?$
         description:
           type: string
           nullable: true
@@ -3794,12 +4802,14 @@ components:
       - estate
       - subscription
       - brand
+      - deposit
       type: string
       description: |-
         * `product` - Product Activation
         * `estate` - Estate Activation
         * `subscription` - Shop Subscription
         * `brand` - Brand Creation
+        * `deposit` - Wallet Deposit
     Product:
       type: object
       properties:
@@ -3811,43 +4821,32 @@ components:
           maxLength: 255
         description:
           type: string
-        brand:
-          allOf:
-          - $ref: '#/components/schemas/Brand'
-          readOnly: true
         brand_id:
           type: integer
           writeOnly: true
-        category:
-          allOf:
-          - $ref: '#/components/schemas/Category'
-          readOnly: true
         category_id:
           type: integer
           writeOnly: true
-        shop:
-          type: integer
-          nullable: true
+        campus:
+          type: array
+          items:
+            type: integer
         price:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
-        attribute_values:
-          type: array
-          items:
-            $ref: '#/components/schemas/AttributeValue'
-          readOnly: true
-        attribute_value_ids:
-          type: array
-          items:
-            type: integer
-            writeOnly: true
-          writeOnly: true
         images:
           type: array
           items:
             $ref: '#/components/schemas/ProductImage'
           readOnly: true
+        images_upload:
+          type: array
+          items:
+            type: string
+            format: uri
+          writeOnly: true
+          description: Upload multiple images at once.
         created_at:
           type: string
           format: date-time
@@ -3859,15 +4858,23 @@ components:
         is_active:
           type: boolean
           readOnly: true
-        payment_amount:
-          type: string
+        condition:
+          $ref: '#/components/schemas/ConditionEnum'
+        attribute_value_ids:
+          type: array
+          items:
+            type: integer
+            writeOnly: true
+          writeOnly: true
+        attribute_values:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttributeValue'
           readOnly: true
       required:
       - attribute_value_ids
       - attribute_values
-      - brand
       - brand_id
-      - category
       - category_id
       - created_at
       - description
@@ -3875,7 +4882,68 @@ components:
       - images
       - is_active
       - name
-      - payment_amount
+      - price
+      - updated_at
+    ProductDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        category:
+          type: string
+        brand:
+          type: string
+        price:
+          type: number
+          format: double
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductImageUrl'
+          readOnly: true
+        attribute_values:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttributeValue'
+          readOnly: true
+        owner:
+          allOf:
+          - $ref: '#/components/schemas/UsersAppCustomUserDetails'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        is_active:
+          type: boolean
+        condition:
+          type: string
+        campus:
+          type: string
+          readOnly: true
+          nullable: true
+      required:
+      - attribute_values
+      - brand
+      - campus
+      - category
+      - condition
+      - created_at
+      - description
+      - id
+      - images
+      - name
+      - owner
       - price
       - updated_at
     ProductImage:
@@ -3896,6 +4964,76 @@ components:
       - id
       - image
       - product
+    ProductImageUrl:
+      type: object
+      properties:
+        image:
+          type: string
+          format: uri
+        is_primary:
+          type: boolean
+      required:
+      - image
+    ProductList:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        category:
+          type: string
+        brand:
+          type: string
+        price:
+          type: number
+          format: double
+        image_url:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        condition:
+          type: string
+        campus:
+          type: string
+          readOnly: true
+          nullable: true
+      required:
+      - brand
+      - campus
+      - category
+      - condition
+      - created_at
+      - id
+      - image_url
+      - name
+      - price
+    ProductPaymentRequest:
+      type: object
+      properties:
+        product_id:
+          type: integer
+      required:
+      - product_id
+    ProductPaymentResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+        product_id:
+          type: integer
+        is_active:
+          type: boolean
+        free_products_remaining:
+          type: integer
+        error:
+          type: string
     Profile:
       type: object
       properties:
@@ -3904,16 +5042,12 @@ components:
           readOnly: true
         user:
           allOf:
-          - $ref: '#/components/schemas/CustomUserDetails'
+          - $ref: '#/components/schemas/UsersAppCustomUserDetails'
           readOnly: true
         image:
           type: string
           format: uri
           nullable: true
-        whatsapp:
-          type: string
-          nullable: true
-          maxLength: 128
         instagram:
           type: string
           nullable: true
@@ -3922,6 +5056,14 @@ components:
           type: string
           nullable: true
           maxLength: 100
+        facebook:
+          type: string
+          nullable: true
+          maxLength: 100
+        campuses:
+          type: array
+          items:
+            type: integer
       required:
       - id
       - user
@@ -3948,11 +5090,15 @@ components:
           type: string
           format: date-time
           readOnly: true
+        is_active:
+          type: string
+          readOnly: true
       required:
       - created_at
       - description
       - end_date
       - id
+      - is_active
       - shop
       - start_date
       - title
@@ -3964,7 +5110,7 @@ components:
           readOnly: true
         owner:
           allOf:
-          - $ref: '#/components/schemas/CustomUserDetails'
+          - $ref: '#/components/schemas/EstatesAppCustomUserDetails'
           readOnly: true
         property_type:
           allOf:
@@ -3984,48 +5130,20 @@ components:
           type: string
         location:
           type: string
+          description: Geographical location of the property.
           maxLength: 100
+        campus:
+          type: array
+          items:
+            type: integer
         price:
-          type: integer
-          minimum: 1
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,13}(?:\.\d{0,2})?$
+          description: Price of the property in TZS.
         is_available:
           type: boolean
-          default: true
-        video_name:
-          type: string
-          maxLength: 500
-        video_description:
-          type: string
-        video:
-          type: string
-          format: uri
-        thumbnail:
-          type: string
-          format: uri
-          readOnly: true
-          nullable: true
-        duration:
-          type: number
-          format: double
-          readOnly: true
-          nullable: true
-        hls_playlist:
-          type: string
-          readOnly: true
-          nullable: true
-        hls_playlist_url:
-          type: string
-          readOnly: true
-        video_status:
-          allOf:
-          - $ref: '#/components/schemas/VideoStatusEnum'
-          readOnly: true
-        is_video_processing:
-          type: boolean
-          readOnly: true
-        video_error_message:
-          type: string
-          readOnly: true
+          description: Indicates if the property is active and visible to users.
         created_at:
           type: string
           format: date-time
@@ -4039,27 +5157,25 @@ components:
           items:
             $ref: '#/components/schemas/PropertyImage'
           readOnly: true
+        images_upload:
+          type: array
+          items:
+            type: string
+            format: uri
+          writeOnly: true
+          description: Upload multiple images at once.
       required:
       - created_at
-      - duration
       - features
-      - hls_playlist
-      - hls_playlist_url
       - id
       - images
-      - is_video_processing
-      - location
       - owner
       - price
       - property_type
       - property_type_id
       - slug
-      - thumbnail
       - title
       - updated_at
-      - video
-      - video_error_message
-      - video_status
     PropertyImage:
       type: object
       properties:
@@ -4094,6 +5210,47 @@ components:
       required:
       - id
       - name
+    PublicUser:
+      type: object
+      description: Serializer for public user discovery - only exposes safe fields
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+        university_names:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        university_short_names:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        campus_names:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        profile_image:
+          type: string
+          nullable: true
+          readOnly: true
+        start_date:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - campus_names
+      - id
+      - profile_image
+      - start_date
+      - university_names
+      - university_short_names
+      - username
     RestAuthDetail:
       type: object
       properties:
@@ -4125,11 +5282,15 @@ components:
           type: string
           format: date-time
           readOnly: true
+        is_available:
+          type: string
+          readOnly: true
       required:
       - created_at
       - description
       - duration
       - id
+      - is_available
       - name
       - price
       - shop
@@ -4148,16 +5309,14 @@ components:
         phone:
           type: string
           maxLength: 128
-        location:
-          type: string
-          maxLength: 255
+        campus:
+          type: integer
+          nullable: true
         description:
           type: string
         operating_hours: {}
         social_media:
           nullable: true
-        university_partner:
-          type: boolean
         created_at:
           type: string
           format: date-time
@@ -4166,6 +5325,8 @@ components:
           type: string
           format: date-time
           readOnly: true
+        is_active:
+          type: boolean
         services:
           type: array
           items:
@@ -4190,18 +5351,30 @@ components:
           allOf:
           - $ref: '#/components/schemas/Subscription'
           readOnly: true
+        is_subscription_active:
+          type: string
+          readOnly: true
+        image:
+          type: string
+          format: uri
+          nullable: true
+        subscription_warning:
+          type: string
+          nullable: true
+          readOnly: true
       required:
       - created_at
       - description
       - events
       - id
-      - location
+      - is_subscription_active
       - media
       - name
       - phone
       - promotions
       - services
       - subscription
+      - subscription_warning
       - updated_at
       - user
     ShopMedia:
@@ -4221,6 +5394,27 @@ components:
       required:
       - id
       - shop
+    ShopSubscriptionPaymentRequest:
+      type: object
+      properties:
+        shop_id:
+          type: integer
+      required:
+      - shop_id
+    ShopSubscriptionPaymentResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+        shop_id:
+          type: integer
+        subscription_status:
+          type: string
+        end_date:
+          type: string
+          format: date-time
+        error:
+          type: string
     Subscription:
       type: object
       properties:
@@ -4242,10 +5436,14 @@ components:
           type: string
           format: date-time
           readOnly: true
+        is_active:
+          type: string
+          readOnly: true
       required:
       - created_at
       - end_date
       - id
+      - is_active
       - start_date
     SubscriptionStatusEnum:
       enum:
@@ -4288,6 +5486,40 @@ components:
       required:
       - access
       - refresh
+    University:
+      type: object
+      description: Simple serializer for University model - raw data only
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        short_name:
+          type: string
+          maxLength: 50
+        radius_km:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          description: Radius in kilometers to consider as 'near' this university
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+      - short_name
+      - updated_at
     UserOffer:
       type: object
       properties:
@@ -4296,37 +5528,100 @@ components:
           readOnly: true
         free_products_remaining:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         free_estates_remaining:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
-        shop_trial_end_date:
+        created_at:
           type: string
           format: date-time
-          nullable: true
-        created_at:
+          readOnly: true
+        updated_at:
           type: string
           format: date-time
           readOnly: true
       required:
       - created_at
       - id
-    VideoStatusEnum:
-      enum:
-      - Pending
-      - Processing
-      - Completed
-      - Failed
-      type: string
-      description: |-
-        * `Pending` - Pending
-        * `Processing` - Processing
-        * `Completed` - Completed
-        * `Failed` - Failed
+      - updated_at
+    UsersAppCustomUserDetails:
+      type: object
+      description: User model w/o password
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+        phonenumber:
+          type: string
+          maxLength: 128
+        profile_id:
+          type: integer
+          readOnly: true
+          nullable: true
+        profile_image:
+          type: string
+          nullable: true
+          readOnly: true
+      required:
+      - email
+      - id
+      - phonenumber
+      - profile_id
+      - profile_image
+      - username
+    Wallet:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user:
+          type: integer
+          readOnly: true
+        balance:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,13}(?:\.\d{0,2})?$
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - updated_at
+      - user
+    WhatsAppClickRequest:
+      type: object
+      properties:
+        product_id:
+          type: integer
+        message:
+          type: string
+      required:
+      - message
+      - product_id
+    WhatsAppClickResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
   securitySchemes:
     jwtAuth:
       type: http

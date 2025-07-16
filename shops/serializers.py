@@ -1,8 +1,12 @@
 from rest_framework import serializers
 from .models import Shop, ShopMedia, Promotion, Event, Services, Subscription, UserOffer
+from users.models import NewUser
+from core.models import University, Campus
 import logging
 from datetime import timedelta
 from django.utils import timezone
+from rest_framework_gis.serializers import GeoFeatureModelSerializer
+from drf_spectacular.utils import extend_schema_field
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +17,10 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         model = Subscription
         fields = ['id', 'status', 'start_date', 'end_date', 'is_trial', 'created_at', 'is_active']
         read_only_fields = ['created_at', 'is_active']
+
+    @extend_schema_field(serializers.BooleanField())
+    def is_active(self, obj) -> bool:
+        return obj.is_active
 
 class UserOfferSerializer(serializers.ModelSerializer):
     class Meta:
@@ -45,6 +53,10 @@ class PromotionSerializer(serializers.ModelSerializer):
         fields = ['id', 'shop', 'title', 'description', 'start_date', 'end_date', 'created_at', 'is_active']
         read_only_fields = ['created_at', 'is_active']
 
+    @extend_schema_field(serializers.BooleanField())
+    def is_active(self, obj) -> bool:
+        return obj.is_active
+
 class EventSerializer(serializers.ModelSerializer):
     shop = serializers.PrimaryKeyRelatedField(queryset=Shop.objects.all())
     is_active = serializers.ReadOnlyField()
@@ -54,16 +66,35 @@ class EventSerializer(serializers.ModelSerializer):
         fields = ['id', 'shop', 'title', 'description', 'start_time', 'end_time', 'is_free', 'ticket_price', 'created_at', 'is_active']
         read_only_fields = ['created_at', 'is_active']
 
+    @extend_schema_field(serializers.BooleanField())
+    def is_active(self, obj) -> bool:
+        return obj.is_active
+
 class ServicesSerializer(serializers.ModelSerializer):
     shop = serializers.PrimaryKeyRelatedField(queryset=Shop.objects.all())
     is_available = serializers.ReadOnlyField()
-
+    
     class Meta:
         model = Services
         fields = ['id', 'shop', 'name', 'description', 'price', 'duration', 'created_at', 'is_available']
         read_only_fields = ['created_at', 'is_available']
 
+    @extend_schema_field(serializers.BooleanField())
+    def is_available(self, obj) -> bool:
+        return obj.is_available
+
 class ShopSerializer(serializers.ModelSerializer):
+    campus = serializers.PrimaryKeyRelatedField(queryset=Campus.objects.all(), required=False, allow_null=True)
+    class Meta:
+        model = Shop
+        fields = [
+            'id', 'user', 'name', 'phone', 'campus', 'description', 'operating_hours',
+            'social_media', 'created_at', 'updated_at', 'is_active',
+            'services', 'promotions', 'events', 'media', 'subscription', 'is_subscription_active',
+            'image', 'subscription_warning'
+        ]
+        read_only_fields = ['user', 'created_at', 'updated_at', 'is_subscription_active']
+
     user = serializers.PrimaryKeyRelatedField(read_only=True)
     services = ServicesSerializer(many=True, read_only=True)
     promotions = PromotionSerializer(many=True, read_only=True)
@@ -74,17 +105,8 @@ class ShopSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(use_url=True, allow_null=True, required=False)  # Add image field
     subscription_warning = serializers.SerializerMethodField()
 
-    class Meta:
-        model = Shop
-        fields = [
-            'id', 'user', 'name', 'phone', 'location', 'description', 'operating_hours',
-            'social_media', 'university_partner', 'created_at', 'updated_at', 'is_active',
-            'services', 'promotions', 'events', 'media', 'subscription', 'is_subscription_active',
-            'image', 'subscription_warning'
-        ]
-        read_only_fields = ['user', 'created_at', 'updated_at', 'is_subscription_active']
-
-    def get_subscription_warning(self, obj):
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_subscription_warning(self, obj) -> str:
         request = self.context.get('request')
         user = getattr(request, 'user', None)
         # Only show to the shop owner
@@ -96,3 +118,15 @@ class ShopSerializer(serializers.ModelSerializer):
                     days_left = (subscription.end_date - now).days
                     return f"Your subscription will expire in {days_left} day(s). Please renew soon!"
         return None
+
+    @extend_schema_field(serializers.BooleanField())
+    def is_active(self, obj) -> bool:
+        return obj.is_active
+
+    @extend_schema_field(serializers.BooleanField())
+    def is_available(self, obj) -> bool:
+        return obj.is_available
+
+    @extend_schema_field(serializers.BooleanField())
+    def is_subscription_active(self, obj) -> bool:
+        return obj.is_subscription_active

@@ -22,6 +22,12 @@ import logging
 from rest_framework.exceptions import PermissionDenied
 from django.utils import timezone
 from django.core.exceptions import ValidationError
+# Location logic now handled by frontend - simplified approach
+from django.contrib.gis.geos import Point
+from django.contrib.gis.db.models.functions import Distance
+from core.models import Campus
+from drf_spectacular.utils import extend_schema
+from rest_framework import serializers
 
 logger = logging.getLogger(__name__)
 
@@ -122,8 +128,8 @@ class ProductViewSet(viewsets.ModelViewSet):
         queryset = Product.objects.select_related('shop', 'owner', 'brand', 'category').prefetch_related('images', 'attribute_values')
         user = self.request.user
         now = timezone.now()
+        
         if not user.is_authenticated:
-            # Show all active products, regardless of shop
             queryset = queryset.filter(is_active=True)
         elif not user.is_staff:
             queryset = queryset.filter(
@@ -158,23 +164,23 @@ class ProductViewSet(viewsets.ModelViewSet):
                 offer.free_products_remaining -= 1
                 offer.save()
                 logger.info(f"Activating product via free offer for user {user.username}.")
+            else:
+                logger.info(f"Product created as inactive for user {user.username} - no active subscription or free offers.")
 
-            instance = serializer.save(owner=user, shop=shop, is_active=is_active)
+            # Remove location assignment logic
+            # if not instance.location:
+            #     from django.contrib.gis.geos import Point
+            #     instance.location = Point(39.2695, -6.8235)  # Dar es Salaam center
+            #     instance.save(update_fields=['location'])
+            #     logger.info(f"Product {instance.id} assigned fallback coordinates - no location provided")
 
-            if not is_active:
-                try:
-                    instance.activate_product()
-                    is_active = True
-                    logger.info(f"Product {instance.id} activated via wallet for user {user.username}.")
-                except ValidationError as e:
-                    logger.error(f"Product activation failed for product {instance.id}: {str(e)}")
-                    deposit_url = self.request.build_absolute_uri(reverse('wallet-deposit'))
-                    return Response({
-                        "error": str(e),
-                        "detail": "Product created but not activated due to payment issue.",
-                        "product_id": instance.id,
-                        "deposit_url": deposit_url
-                    }, status=status.HTTP_400_BAD_REQUEST)
+            # Campus ManyToMany assignment is handled by the serializer
+            instance = serializer.save(
+                owner=user,
+                shop=shop,
+                is_active=is_active
+            )
+            logger.info(f"Product {instance.id} created successfully")
 
             response_data = ProductSerializer(instance, context={'request': self.request}).data
             response_data['free_products_remaining'] = offer.free_products_remaining if offer else 0
@@ -194,7 +200,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     @action(detail=False, permission_classes=[permissions.AllowAny])
     def recent(self, request):
         logger.info(f"Recent list query params: {request.query_params}")
-        queryset = self.get_queryset()  # Use get_queryset to apply public filters
+        queryset = self.get_queryset()  # Now supports optional location filtering
 
         if query := self.request.query_params.get('q'):
             queryset = queryset.filter(
@@ -291,7 +297,7 @@ class ProductViewSet(viewsets.ModelViewSet):
                 'results': []
             }, status=status.HTTP_404_NOT_FOUND)
 
-        queryset = self.get_queryset().filter(category__id__in=valid_category_ids)
+        queryset = self.get_queryset().filter(category__id__in=valid_category_ids)  # Now supports optional location filtering
 
         logger.info(f"By category queryset type: {type(queryset)}")
         page = self.paginate_queryset(queryset)
@@ -326,6 +332,56 @@ class ProductViewSet(viewsets.ModelViewSet):
         serializer = ProductDetailSerializer(product, context={'request': request})
         return Response(serializer.data)
 
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def my_products(self, request):
+        """
+        Retrieve the authenticated user's products.
+        """
+        queryset = self.get_queryset().filter(owner=request.user)
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def near_university(self, request):
+        campus_id = request.query_params.get('campus_id')
+        if not campus_id:
+            return Response({'error': 'campus_id is required'}, status=400)
+        try:
+            campus = Campus.objects.get(id=campus_id)
+        except Campus.DoesNotExist:
+            return Response({'error': 'Campus not found'}, status=404)
+        products = Product.objects.filter(
+            campus=campus,
+            is_active=True
+        ).select_related('shop', 'owner', 'brand', 'category').prefetch_related('images')
+        campus_data = {
+            'id': campus.id,
+            'name': campus.name,
+            'latitude': campus.location.y if campus.location else None,
+            'longitude': campus.location.x if campus.location else None
+        }
+        serializer = self.get_serializer(products, many=True)
+        return Response({
+            'campus': campus_data,
+            'products': serializer.data
+        })
+
+    @action(detail=False, methods=['get'])
+    def near_user(self, request):
+        user = request.user
+        radius = float(request.query_params.get('radius', 5000))
+        # Remove location-based filtering and distance logic for products
+        products = Product.objects.filter(
+            is_active=True
+        ).select_related('shop', 'owner', 'brand', 'category').prefetch_related('images')
+        serializer = self.get_serializer(products, many=True)
+        return Response(serializer.data)
+
 class ProductImageViewSet(viewsets.ModelViewSet):
     serializer_class = ProductImageSerializer
     permission_classes = [permissions.IsAuthenticated, IsProductOwnerOrReadOnly]
@@ -344,6 +400,18 @@ class ProductImageViewSet(viewsets.ModelViewSet):
         )
         serializer.save(product=product)
 
+class WhatsAppClickRequestSerializer(serializers.Serializer):
+    product_id = serializers.IntegerField()
+    message = serializers.CharField()
+
+class WhatsAppClickResponseSerializer(serializers.Serializer):
+    detail = serializers.CharField()
+
+@extend_schema(
+    request=WhatsAppClickRequestSerializer,
+    responses={200: WhatsAppClickResponseSerializer},
+    description="Track WhatsApp click for a product."
+)
 class WhatsAppClickView(APIView):
     def post(self, request):
         serializer = WhatsAppClickSerializer(data=request.data, context={'request': request})

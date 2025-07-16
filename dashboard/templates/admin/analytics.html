@@ -1,0 +1,934 @@
+{% extends "admin/base_site.html" %}
+{% block extrastyle %}
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<style>
+  :root {
+    --primary: #4f46e5;
+    --primary-light: #e0e7ff;
+    --secondary: #10b981;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+    --info: #3b82f6;
+    --dark: #1f2937;
+    --light: #f9fafb;
+    --gray: #6b7280;
+    --border: #e5e7eb;
+  }
+  
+  body {
+    font-family: 'Inter', sans-serif;
+    background-color: #f3f4f6;
+    color: var(--dark);
+  }
+  
+  .dashboard-container {
+    max-width: 1800px;
+    margin: 0 auto;
+    padding: 1.5rem;
+  }
+  
+  .dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+  }
+  
+  .dashboard-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--dark);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  
+  .dashboard-title i {
+    color: var(--primary);
+  }
+  
+  .date-filter {
+    background: white;
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    border: 1px solid var(--border);
+    font-size: 0.9rem;
+  }
+  
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2.5rem;
+  }
+  
+  .kpi-card {
+    background: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    padding: 1.5rem;
+    transition: all 0.2s ease;
+    border-top: 4px solid transparent;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05);
+  }
+  
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+  }
+  
+  .kpi-card.primary::before { background: var(--primary); }
+  .kpi-card.success::before { background: var(--secondary); }
+  .kpi-card.warning::before { background: var(--warning); }
+  .kpi-card.info::before { background: var(--info); }
+  
+  .kpi-card h3 {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--gray);
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .kpi-card p {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--dark);
+    margin: 0;
+  }
+  
+  .kpi-card .trend {
+    display: flex;
+    align-items: center;
+    font-size: 0.875rem;
+    margin-top: 0.75rem;
+    color: var(--gray);
+  }
+  
+  .trend.up { color: var(--secondary); }
+  .trend.down { color: var(--danger); }
+  
+  .section-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 2.5rem 0 1.5rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--dark);
+  }
+  
+  .section-title i { 
+    color: var(--primary);
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .dashboard-charts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2.5rem;
+  }
+  
+  .chart-card {
+    background: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    padding: 1.5rem;
+  }
+  
+  .chart-card h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--dark);
+  }
+  
+  .data-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2.5rem;
+  }
+  
+  .data-card {
+    background: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    padding: 1.5rem;
+  }
+  
+  .data-card h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--dark);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .data-card h4 i {
+    color: var(--primary);
+  }
+  
+  .dashboard-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.875rem;
+  }
+  
+  .dashboard-table th {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    background: var(--light);
+    color: var(--gray);
+    font-weight: 500;
+    border-bottom: 1px solid var(--border);
+  }
+  
+  .dashboard-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  
+  .dashboard-table tr:last-child td {
+    border-bottom: none;
+  }
+  
+  .dashboard-table tr:hover td {
+    background: var(--primary-light);
+  }
+  
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1;
+  }
+  
+  .badge.primary { background: var(--primary-light); color: var(--primary); }
+  .badge.success { background: #d1fae5; color: var(--secondary); }
+  .badge.warning { background: #fef3c7; color: var(--warning); }
+  .badge.danger { background: #fee2e2; color: var(--danger); }
+  .badge.info { background: #dbeafe; color: var(--info); }
+  .badge.dark { background: var(--dark); color: white; }
+  
+  .avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--primary-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    font-weight: 600;
+    font-size: 0.875rem;
+    margin-right: 0.5rem;
+  }
+  
+  .status-indicator {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+  }
+  
+  .status-active { background: var(--secondary); }
+  .status-inactive { background: var(--danger); }
+  .status-pending { background: var(--warning); }
+  
+  .progress-bar {
+    height: 6px;
+    background: #e5e7eb;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  
+  .progress-fill {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 3px;
+  }
+  
+  @media (max-width: 768px) {
+    .kpi-grid {
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    }
+    
+    .dashboard-charts {
+      grid-template-columns: 1fr;
+    }
+    
+    .data-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<div class="dashboard-container">
+  <div class="dashboard-header">
+    <h1 class="dashboard-title">
+      <i data-feather="bar-chart-2"></i>
+      Mwanachuoshop Analytics Dashboard
+    </h1>
+    <select class="date-filter">
+      <option>Last 7 days</option>
+      <option selected>Last 30 days</option>
+      <option>Last 90 days</option>
+      <option>This year</option>
+    </select>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="kpi-grid">
+    <div class="kpi-card primary">
+      <h3>Total Users</h3>
+      <p>{{ total_users }}</p>
+      <div class="trend up">
+        <i data-feather="trending-up"></i>
+        <span>12% from last month</span>
+      </div>
+    </div>
+    <div class="kpi-card success">
+      <h3>Active Users</h3>
+      <p>{{ active_users }}</p>
+      <div class="trend up">
+        <i data-feather="trending-up"></i>
+        <span>8% from last month</span>
+      </div>
+    </div>
+    <div class="kpi-card info">
+      <h3>New Users (30d)</h3>
+      <p>{{ new_users_month }}</p>
+      <div class="trend down">
+        <i data-feather="trending-down"></i>
+        <span>3% from last month</span>
+      </div>
+    </div>
+    <div class="kpi-card primary">
+      <h3>Total Shops</h3>
+      <p>{{ total_shops }}</p>
+      <div class="trend up">
+        <i data-feather="trending-up"></i>
+        <span>15% from last month</span>
+      </div>
+    </div>
+    <div class="kpi-card success">
+      <h3>Active Shops</h3>
+      <p>{{ active_shops }}</p>
+      <div class="trend up">
+        <i data-feather="trending-up"></i>
+        <span>10% from last month</span>
+      </div>
+    </div>
+    <div class="kpi-card info">
+      <h3>New Shops (30d)</h3>
+      <p>{{ new_shops_month }}</p>
+      <div class="trend up">
+        <i data-feather="trending-up"></i>
+        <span>22% from last month</span>
+      </div>
+    </div>
+    <div class="kpi-card primary">
+      <h3>Total Products</h3>
+      <p>{{ total_products }}</p>
+      <div class="trend up">
+        <i data-feather="trending-up"></i>
+        <span>18% from last month</span>
+      </div>
+    </div>
+    <div class="kpi-card success">
+      <h3>Active Products</h3>
+      <p>{{ active_products }}</p>
+      <div class="trend up">
+        <i data-feather="trending-up"></i>
+        <span>9% from last month</span>
+      </div>
+    </div>
+    <div class="kpi-card warning">
+      <h3>Revenue (All)</h3>
+      <p>TZS {{ revenue_all }}</p>
+      <div class="trend up">
+        <i data-feather="trending-up"></i>
+        <span>24% from last month</span>
+      </div>
+    </div>
+    <div class="kpi-card warning">
+      <h3>Revenue (30d)</h3>
+      <p>TZS {{ revenue_month }}</p>
+      <div class="trend up">
+        <i data-feather="trending-up"></i>
+        <span>14% from last month</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts Section -->
+  <h2 class="section-title">
+    <i data-feather="activity"></i>
+    Platform Trends
+  </h2>
+  
+  <div class="dashboard-charts">
+    <div class="chart-card">
+      <h4>User Growth</h4>
+      <canvas id="userGrowthChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <h4>Shop Growth</h4>
+      <canvas id="shopGrowthChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <h4>Product Growth</h4>
+      <canvas id="productGrowthChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <h4>Revenue Trend</h4>
+      <canvas id="revenueTrendChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Top Performers -->
+  <h2 class="section-title">
+    <i data-feather="award"></i>
+    Top Performers
+  </h2>
+  
+  <div class="data-grid">
+    <div class="data-card">
+      <h4><i data-feather="home"></i> Most Popular University</h4>
+      <table class="dashboard-table">
+        <tr>
+          <td>
+            <div style="display: flex; align-items: center;">
+              <div class="avatar">{{ top_university.name|first|upper }}</div>
+              <div>
+                <div style="font-weight: 500;">{{ top_university.name }}</div>
+                <div style="font-size: 0.75rem; color: var(--gray);">{{ top_university.user_count }} users</div>
+              </div>
+            </div>
+          </td>
+          <td><span class="badge success">Top performer</span></td>
+        </tr>
+      </table>
+    </div>
+    
+    <div class="data-card">
+      <h4><i data-feather="user"></i> Most Active User</h4>
+      <table class="dashboard-table">
+        <tr>
+          <td>
+            <div style="display: flex; align-items: center;">
+              <div class="avatar">{{ most_active_user.username|first|upper }}</div>
+              <div>
+                <div style="font-weight: 500;">{{ most_active_user.username }}</div>
+                <div style="font-size: 0.75rem; color: var(--gray);">{{ most_active_user.num_products|default:0 }} products</div>
+              </div>
+            </div>
+          </td>
+          <td><span class="badge primary">Active</span></td>
+        </tr>
+      </table>
+    </div>
+    
+    <div class="data-card">
+      <h4><i data-feather="shopping-bag"></i> Most Active Shop</h4>
+      <table class="dashboard-table">
+        <tr>
+          <td>
+            <div style="display: flex; align-items: center;">
+              <div class="avatar">{{ most_active_shop.name|first|upper }}</div>
+              <div>
+                <div style="font-weight: 500;">{{ most_active_shop.name }}</div>
+                <div style="font-size: 0.75rem; color: var(--gray);">{{ most_active_shop.num_products|default:0 }} products</div>
+              </div>
+            </div>
+          </td>
+          <td><span class="badge primary">Active</span></td>
+        </tr>
+      </table>
+    </div>
+    
+    <div class="data-card">
+      <h4><i data-feather="package"></i> Most Active Product</h4>
+      <table class="dashboard-table">
+        <tr>
+          <td>
+            <div style="display: flex; align-items: center;">
+              <div class="avatar">{{ most_active_product.name|first|upper }}</div>
+              <div>
+                <div style="font-weight: 500;">{{ most_active_product.name }}</div>
+                <div style="font-size: 0.75rem; color: var(--gray);">{{ most_active_product.num_views|default:0 }} views</div>
+              </div>
+            </div>
+          </td>
+          <td><span class="badge success">Popular</span></td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- Top Lists -->
+  <div class="data-grid">
+    <div class="data-card">
+      <h4><i data-feather="home"></i> Top 5 Universities</h4>
+      <table class="dashboard-table">
+        <thead>
+          <tr>
+            <th>University</th>
+            <th>Users</th>
+            <th>Growth</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for uni in top_universities %}
+          <tr>
+            <td>{{ uni.name }}</td>
+            <td>{{ uni.user_count }}</td>
+            <td>
+              <div class="progress-bar">
+                <div class="progress-fill" style="width: {{ uni.growth_percentage }}%"></div>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    
+    <div class="data-card">
+      <h4><i data-feather="shopping-bag"></i> Top 5 Shops</h4>
+      <table class="dashboard-table">
+        <thead>
+          <tr>
+            <th>Shop</th>
+            <th>Products</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for shop in top_shops %}
+          <tr>
+            <td>{{ shop.name }}</td>
+            <td>{{ shop.num_products|default:0 }}</td>
+            <td>
+              {% if shop.is_active %}
+                <span class="badge success">Active</span>
+              {% else %}
+                <span class="badge danger">Inactive</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    
+    <div class="data-card">
+      <h4><i data-feather="package"></i> Top 5 Products</h4>
+      <table class="dashboard-table">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Views</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for prod in top_products %}
+          <tr>
+            <td>{{ prod.name }}</td>
+            <td>{{ prod.num_views|default:0 }}</td>
+            <td>
+              {% if prod.is_active %}
+                <span class="badge success">Active</span>
+              {% else %}
+                <span class="badge danger">Inactive</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Recent Activity -->
+  <h2 class="section-title">
+    <i data-feather="clock"></i>
+    Recent Activity
+  </h2>
+  
+  <div class="data-grid">
+    <div class="data-card">
+      <h4><i data-feather="user-plus"></i> Recent Users</h4>
+      <table class="dashboard-table">
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Joined</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for user in recent_users %}
+          <tr>
+            <td>{{ user.username }}</td>
+            <td>{{ user.start_date|date:"M d, Y" }}</td>
+            <td>
+              {% if user.is_active %}
+                <span class="badge success">Active</span>
+              {% else %}
+                <span class="badge danger">Inactive</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    
+    <div class="data-card">
+      <h4><i data-feather="shopping-bag"></i> Recent Shops</h4>
+      <table class="dashboard-table">
+        <thead>
+          <tr>
+            <th>Shop</th>
+            <th>Created</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for shop in recent_shops %}
+          <tr>
+            <td>{{ shop.name }}</td>
+            <td>{{ shop.created_at|date:"M d, Y" }}</td>
+            <td>
+              {% if shop.is_approved %}
+                <span class="badge success">Approved</span>
+              {% else %}
+                <span class="badge warning">Pending</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    
+    <div class="data-card">
+      <h4><i data-feather="dollar-sign"></i> Recent Payments</h4>
+      <table class="dashboard-table">
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Amount</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for pay in recent_payments %}
+          <tr>
+            <td>{{ pay.user }}</td>
+            <td>TZS {{ pay.amount }}</td>
+            <td>{{ pay.date_added|date:"M d, Y" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- System Health -->
+  <h2 class="section-title">
+    <i data-feather="alert-circle"></i>
+    System Health & Alerts
+  </h2>
+  
+  <div class="data-grid">
+    <div class="data-card">
+      <h4><i data-feather="user-x"></i> Inactive Users (7d+)</h4>
+      <table class="dashboard-table">
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Last Login</th>
+            <th>Days</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for user in inactive_users %}
+          <tr>
+            <td>{{ user.username }}</td>
+            <td>{{ user.last_login|date:"M d, Y" }}</td>
+            <td>
+              <span class="badge danger">{{ user.inactive_days }} days</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    
+    <div class="data-card">
+      <h4><i data-feather="alert-triangle"></i> Pending Shops</h4>
+      <table class="dashboard-table">
+        <thead>
+          <tr>
+            <th>Shop</th>
+            <th>Submitted</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for shop in pending_shops %}
+          <tr>
+            <td>{{ shop.name }}</td>
+            <td>{{ shop.created_at|date:"M d, Y" }}</td>
+            <td>
+              <button style="background: var(--primary); color: white; border: none; padding: 0.25rem 0.75rem; border-radius: 0.375rem; font-size: 0.75rem; cursor: pointer;">
+                Review
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    
+    <div class="data-card">
+      <h4><i data-feather="flag"></i> Flagged Products</h4>
+      <table class="dashboard-table">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Flags</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for prod in flagged_products %}
+          <tr>
+            <td>{{ prod.name }}</td>
+            <td>
+              <span class="badge danger">{{ prod.flag_count }} reports</span>
+            </td>
+            <td>
+              <button style="background: var(--primary); color: white; border: none; padding: 0.25rem 0.75rem; border-radius: 0.375rem; font-size: 0.75rem; cursor: pointer;">
+                Review
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+<script>
+  feather.replace();
+  
+  // Chart colors
+  const chartColors = {
+    primary: 'rgba(79, 70, 229, 1)',
+    primaryLight: 'rgba(79, 70, 229, 0.1)',
+    success: 'rgba(16, 185, 129, 1)',
+    successLight: 'rgba(16, 185, 129, 0.1)',
+    warning: 'rgba(245, 158, 11, 1)',
+    warningLight: 'rgba(245, 158, 11, 0.1)',
+    danger: 'rgba(239, 68, 68, 1)',
+    dangerLight: 'rgba(239, 68, 68, 0.1)',
+    info: 'rgba(59, 130, 246, 1)',
+    infoLight: 'rgba(59, 130, 246, 0.1)',
+  };
+  
+  // User Growth Chart
+  new Chart(document.getElementById('userGrowthChart').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: {{ user_growth_dates|safe }},
+      datasets: [{
+        label: 'User Signups',
+        data: {{ user_growth_counts|safe }},
+        borderColor: chartColors.primary,
+        backgroundColor: chartColors.primaryLight,
+        borderWidth: 2,
+        tension: 0.3,
+        fill: true
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          mode: 'index',
+          intersect: false
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: {
+            drawBorder: false
+          }
+        },
+        x: {
+          grid: {
+            display: false
+          }
+        }
+      }
+    }
+  });
+  
+  // Shop Growth Chart
+  new Chart(document.getElementById('shopGrowthChart').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: {{ shop_growth_dates|safe }},
+      datasets: [{
+        label: 'Shop Registrations',
+        data: {{ shop_growth_counts|safe }},
+        borderColor: chartColors.success,
+        backgroundColor: chartColors.successLight,
+        borderWidth: 2,
+        tension: 0.3,
+        fill: true
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          mode: 'index',
+          intersect: false
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: {
+            drawBorder: false
+          }
+        },
+        x: {
+          grid: {
+            display: false
+          }
+        }
+      }
+    }
+  });
+  
+  // Product Growth Chart
+  new Chart(document.getElementById('productGrowthChart').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: {{ product_growth_dates|safe }},
+      datasets: [{
+        label: 'Product Listings',
+        data: {{ product_growth_counts|safe }},
+        borderColor: chartColors.info,
+        backgroundColor: chartColors.infoLight,
+        borderWidth: 2,
+        tension: 0.3,
+        fill: true
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          mode: 'index',
+          intersect: false
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: {
+            drawBorder: false
+          }
+        },
+        x: {
+          grid: {
+            display: false
+          }
+        }
+      }
+    }
+  });
+  
+  // Revenue Trend Chart
+  new Chart(document.getElementById('revenueTrendChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: {{ revenue_trend_dates|safe }},
+      datasets: [{
+        label: 'Revenue',
+        data: {{ revenue_trend_totals|safe }},
+        backgroundColor: chartColors.warning,
+        borderColor: chartColors.warning,
+        borderWidth: 0,
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          mode: 'index',
+          intersect: false
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: {
+            drawBorder: false
+          }
+        },
+        x: {
+          grid: {
+            display: false
+          }
+        }
+      }
+    }
+  });
+</script>
+{% endblock %}

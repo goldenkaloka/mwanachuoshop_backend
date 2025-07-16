@@ -6,8 +6,10 @@ from django.contrib.contenttypes.models import ContentType
 from decimal import Decimal
 from django.db import transaction
 import logging
+from django.contrib.gis.db import models as gis_models
 
 from payments.models import Payment
+from core.models import University, Campus
 
 logger = logging.getLogger(__name__)
 
@@ -30,11 +32,13 @@ class Property(models.Model):
     title = models.CharField(max_length=100)
     slug = models.SlugField(max_length=100, blank=True, unique=True)
     features = models.TextField()
-    location = models.CharField(max_length=100, help_text="Geographical location of the property.")
+    location = models.CharField(max_length=100, help_text="Geographical location of the property.", default='dar es salaam')
     price = models.DecimalField(max_digits=15, decimal_places=2, help_text="Price of the property in TZS.")
     is_available = models.BooleanField(default=False, help_text="Indicates if the property is active and visible to users.")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    # Change campus to ManyToManyField
+    campus = models.ManyToManyField(Campus, related_name='properties', blank=True)
 
     class Meta:
         verbose_name = "Property"
@@ -47,10 +51,12 @@ class Property(models.Model):
             models.Index(fields=['property_type']),
             models.Index(fields=['price']),
             models.Index(fields=['slug']),
+            models.Index(fields=['location']),
+            models.Index(fields=['is_available', 'location']),
         ]
 
     def __str__(self):
-        return f"{self.title} - {self.location}"
+        return f"{self.title}"
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -62,6 +68,14 @@ class Property(models.Model):
                 counter += 1
             self.slug = slug
         super().save(*args, **kwargs)
+
+    def clean(self):
+        if not self.title:
+            raise ValidationError("Property title cannot be empty.")
+        if not self.features:
+            raise ValidationError("Property features cannot be empty.")
+        if self.price <= 0:
+            raise ValidationError("Property price must be greater than zero.")
 
     def activate_property(self):
         """Activate the property by deducting payment from the user's wallet."""
@@ -94,23 +108,22 @@ class Property(models.Model):
                 raise
 
 class PropertyImage(models.Model):
-    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='images')
-    image = models.ImageField(upload_to='properties/images/')
+    """Property image model"""
+    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='property_images')
+    image = models.ImageField(upload_to='property_images/')
     is_primary = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['-is_primary', 'created_at']
         verbose_name = "Property Image"
         verbose_name_plural = "Property Images"
-
-    def save(self, *args, **kwargs):
-        if self.is_primary:
-            PropertyImage.objects.filter(
-                property=self.property,
-                is_primary=True
-            ).exclude(id=self.id).update(is_primary=False)
-        super().save(*args, **kwargs)
+        ordering = ['-is_primary', '-created_at']
 
     def __str__(self):
         return f"Image for {self.property.title}"
+
+    def save(self, *args, **kwargs):
+        # If this image is being set as primary, unset all other primary images for this property
+        if self.is_primary:
+            PropertyImage.objects.filter(property=self.property, is_primary=True).update(is_primary=False)
+        super().save(*args, **kwargs)

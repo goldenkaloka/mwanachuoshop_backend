@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericTabularInline
+from django.contrib import messages
 from .models import PaymentService, Payment, Wallet, WalletTransaction
 from django.utils.html import format_html
 
@@ -36,7 +37,7 @@ class WalletAdmin(admin.ModelAdmin):
         return False  # Wallets should be created via signals when users are created
 
 
-class PaymentInline(GenericTabularInline):
+class PaymentInline(admin.TabularInline):
     model = Payment
     extra = 0
     readonly_fields = ('payment_type', 'amount', 'status', 'date_added')
@@ -115,7 +116,7 @@ class PaymentAdmin(admin.ModelAdmin):
                 self.message_user(
                     request,
                     f"Failed to process payment {payment.id}: {str(e)}",
-                    level='ERROR'
+                    level=messages.ERROR
                 )
         self.message_user(
             request,

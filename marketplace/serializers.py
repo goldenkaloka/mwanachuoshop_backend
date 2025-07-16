@@ -4,6 +4,8 @@ from django.contrib.auth import get_user_model
 from .models import Category, Brand, Attribute, AttributeValue, Product, ProductImage, WhatsAppClick
 from shops.models import Shop, UserOffer
 from users.serializers import CustomUserDetailsSerializer
+from core.models import University, Campus
+from drf_spectacular.utils import extend_schema_field
 
 User = get_user_model()
 
@@ -22,7 +24,8 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'parent', 'parent_name', 'children', 'is_active']
         read_only_fields = ['is_active']
 
-    def get_children(self, obj):
+    @extend_schema_field(serializers.ListSerializer(child=serializers.CharField()))
+    def get_children(self, obj) -> list:
         children = obj.children.filter(is_active=True)
         return CategorySerializer(children, many=True, context=self.context).data
 
@@ -89,6 +92,11 @@ class AttributeValueSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("This attribute value already exists for the category.")
         return data
 
+    @extend_schema_field(serializers.ListSerializer(child=serializers.CharField()))
+    def get_children(self, obj) -> list:
+        # If this method exists, ensure it is decorated and typed
+        pass
+
 class ProductImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductImage
@@ -107,39 +115,27 @@ class ProductSerializer(serializers.ModelSerializer):
     )
     attribute_values = AttributeValueSerializer(many=True, read_only=True)
     images = ProductImageSerializer(many=True, read_only=True)
-    brand = BrandSerializer(read_only=True)
-    brand_id = serializers.PrimaryKeyRelatedField(
-        queryset=Brand.objects.all(),
-        source='brand',
-        write_only=True
-    )
-    category = CategorySerializer(read_only=True)
-    category_id = serializers.PrimaryKeyRelatedField(
-        queryset=Category.objects.all(),
-        source='category',
-        write_only=True
-    )
-    shop = serializers.PrimaryKeyRelatedField(
-        queryset=Shop.objects.all(),
-        required=False,
-        allow_null=True
-    )
-    payment_amount = serializers.SerializerMethodField(read_only=True)
     images_upload = serializers.ListField(
         child=serializers.ImageField(),
         write_only=True,
         required=False,
         help_text="Upload multiple images at once."
     )
+    brand_id = serializers.PrimaryKeyRelatedField(
+        queryset=Brand.objects.all(), source='brand', write_only=True, required=True
+    )
+    category_id = serializers.PrimaryKeyRelatedField(
+        queryset=Category.objects.all(), source='category', write_only=True, required=True
+    )
 
     class Meta:
         model = Product
         fields = [
-            'id', 'name', 'description', 'brand', 'brand_id', 'category', 'category_id',
-            'owner', 'shop', 'price', 'attribute_values', 'attribute_value_ids', 'images',
-            'images_upload', 'created_at', 'updated_at', 'is_active', 'payment_amount', 'condition'
+            'id', 'name', 'description', 'brand_id', 'category_id', 'campus', 'price',
+            'images', 'images_upload', 'created_at', 'updated_at', 'is_active', 'condition', 'owner',
+            'attribute_value_ids', 'attribute_values'
         ]
-        read_only_fields = ['owner', 'created_at', 'updated_at', 'is_active']
+        read_only_fields = ['created_at', 'updated_at', 'is_active']
 
     def get_payment_amount(self, obj):
         try:
@@ -250,15 +246,17 @@ class ProductListSerializer(serializers.ModelSerializer):
     price = serializers.FloatField()
     image_url = serializers.SerializerMethodField()
     condition = serializers.CharField()
+    campus = serializers.CharField(source='campus.name', read_only=True, allow_null=True)
 
     class Meta:
         model = Product
         fields = [
             'id', 'name', 'category', 'brand', 'price', 'image_url',
-            'created_at', 'condition'
+            'created_at', 'condition', 'campus'
         ]
 
-    def get_image_url(self, obj):
+    @extend_schema_field(serializers.DictField())
+    def get_image_url(self, obj) -> dict:
         request = self.context.get('request')
         primary_image = obj.images.filter(is_primary=True).first()
         if primary_image and request:
@@ -276,13 +274,14 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     attribute_values = AttributeValueSerializer(many=True, read_only=True)
     owner = CustomUserDetailsSerializer(read_only=True)
     condition = serializers.CharField()
+    campus = serializers.CharField(source='campus.name', read_only=True, allow_null=True)
 
     class Meta:
         model = Product
         fields = [
             'id', 'name', 'description', 'category', 'brand', 'price',
             'images', 'attribute_values', 'owner', 'created_at',
-            'updated_at', 'is_active', 'condition'
+            'updated_at', 'is_active', 'condition', 'campus'
         ]
 
 class WhatsAppClickSerializer(serializers.ModelSerializer):

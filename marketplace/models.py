@@ -10,6 +10,8 @@ from django.utils.text import slugify
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from payments.models import Payment
+from core.models import University, Campus
+from django.contrib.gis.db import models as gis_models
 
 class Category(MPTTModel):
     name = models.CharField(max_length=100, unique=True)
@@ -77,6 +79,10 @@ class Product(models.Model):
     category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name='products')
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='products')
     shop = models.ForeignKey('shops.Shop', on_delete=models.CASCADE, related_name='products', null=True, blank=True)
+    # Remove location field
+    # location = gis_models.PointField(geography=True, null=True, blank=True)
+    # Change campus to ManyToManyField
+    campus = models.ManyToManyField(Campus, related_name='products', blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     condition = models.CharField(max_length=100, choices=Condition.choices, default=Condition.USED)
@@ -90,7 +96,10 @@ class Product(models.Model):
             models.Index(fields=['category_id']),
             models.Index(fields=['shop_id']),
             models.Index(fields=['owner_id']),
-            models.Index(fields=['created_at'])
+            models.Index(fields=['created_at']),
+            # Removed location-related indexes
+            # models.Index(fields=['location']),
+            # models.Index(fields=['is_active', 'location']),
         ]
     
     def clean(self):
@@ -102,6 +111,7 @@ class Product(models.Model):
             raise ValidationError("Product description cannot be empty.")
         if self.shop and self.shop.owner != self.owner:
             raise ValidationError("Shop must belong to the product owner.")
+        
         if self.pk:
             valid_categories = self.category.get_ancestors(include_self=True)
             for attr_value in self.attribute_values.all():
